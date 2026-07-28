@@ -121,16 +121,17 @@ Complete this table before publishing:
 
 | Evidence | Value |
 | --- | --- |
-| Public repository | Pending |
-| Live frontend | Pending |
+| Public repository | [Some1Uknow/nox-swap-shield](https://github.com/Some1Uknow/nox-swap-shield) |
+| Live frontend | Blocked on real Sepolia deployment addresses |
 | Router | Pending |
 | Shielded input token | Pending |
 | Shielded output token | Pending |
 | AMM router/pool/fee | Pending |
 | Deployment transactions | Pending |
 | Three-wallet settlement | Pending |
-| GitHub Actions run | Pending |
-| Railway web deployment | Pending |
-| Railway keeper deployment | Pending |
+| GitHub Actions run | [Passing release check](https://github.com/Some1Uknow/nox-swap-shield/actions/runs/30388862580) |
+| Railway project | [Repository-linked production services](https://railway.com/project/2660660c-917b-45e6-b5d9-481f2dd5f10d) |
+| Railway web deployment | Source connected to `main`; build intentionally blocked until the seven public `VITE_` values are set |
+| Railway keeper deployment | Source connected to `main`; runtime intentionally blocked until the five required private service values are set |
 | Demo video | Pending |
 | X submission post | Pending |
