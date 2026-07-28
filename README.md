@@ -210,7 +210,9 @@ prior hackathon work.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for the Sepolia release sequence, Railway
 repository-linked services, required variables, health checks, rollback, and
-evidence that must be recorded before the public beta is announced.
+evidence that must be recorded before the public beta is announced. See
+[BETA_LAUNCH.md](BETA_LAUNCH.md) for the final Vercel, keeper, three-wallet,
+and submission checklist.
 
 ## Feedback
 
