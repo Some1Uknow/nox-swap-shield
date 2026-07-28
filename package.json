@@ -18,6 +18,7 @@
     "preflight:sepolia": "tsx scripts/preflight-sepolia.ts",
     "release:preflight": "npm run preflight:sepolia && npm --prefix frontend run build:release",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "bootstrap:sepolia": "tsx scripts/bootstrap-sepolia-env.ts",
     "keeper": "tsx scripts/keeper.ts",
     "demo:submit": "tsx scripts/demo-submit-order.ts"
   },
