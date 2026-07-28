@@ -43,6 +43,7 @@ const ROUTER_ABI = parseAbi([
   'function MIN_BATCH_SETTLEMENT_WINDOW() view returns (uint48)',
 ]);
 const SHIELDED_TOKEN_ABI = parseAbi(['function underlying() view returns (address)']);
+const AMM_ADAPTER_ABI = parseAbi(['function swapRouter02() view returns (address)']);
 const ERC20_METADATA_ABI = parseAbi([
   'function decimals() view returns (uint8)',
   'function symbol() view returns (string)',
@@ -153,6 +154,7 @@ async function main() {
   const shieldedTokenOut = requiredAddress('SHIELDED_TOKEN_OUT_ADDRESS');
   const router = requiredAddress('SWAP_SHIELD_ROUTER_ADDRESS');
   const ammRouter = requiredAddress('AMM_ROUTER_ADDRESS');
+  const ammAdapter = requiredAddress('AMM_ADAPTER_ADDRESS');
   const ammPool = requiredAddress('AMM_POOL_ADDRESS');
   const configuredExecutor = requiredAddress('SETTLEMENT_EXECUTOR_ADDRESS');
   const poolFee = requiredPoolFee();
@@ -178,6 +180,7 @@ async function main() {
     ['SHIELDED_TOKEN_OUT_ADDRESS', shieldedTokenOut],
     ['SWAP_SHIELD_ROUTER_ADDRESS', router],
     ['AMM_ROUTER_ADDRESS', ammRouter],
+    ['AMM_ADAPTER_ADDRESS', ammAdapter],
     ['AMM_POOL_ADDRESS', ammPool],
     ['NoxCompute', NOX_COMPUTE_SEPOLIA],
   ];
@@ -187,6 +190,11 @@ async function main() {
     const code = codes[index];
     assert(code && code !== '0x', `${label} has no deployed bytecode on Ethereum Sepolia.`);
   }
+  const ammRouterCode = codes[deployedTargets.findIndex(([label]) => label === 'AMM_ROUTER_ADDRESS')];
+  assert(
+    ammRouterCode?.toLowerCase().includes('04e45aaf'),
+    'AMM_ROUTER_ADDRESS does not expose Uniswap SwapRouter02 exactInputSingle().',
+  );
   const executorCode = await publicClient.getCode({ address: executor.address });
   assert(!executorCode || executorCode === '0x', 'SETTLEMENT_EXECUTOR_PRIVATE_KEY resolves to a contract account, not an EOA.');
 
@@ -196,6 +204,7 @@ async function main() {
     routerShieldedIn,
     routerShieldedOut,
     routerAmmRouter,
+    adapterSwapRouter02,
     routerPoolFee,
     routerExecutor,
     minBatchSize,
@@ -217,6 +226,7 @@ async function main() {
     publicClient.readContract({ address: router, abi: ROUTER_ABI, functionName: 'shieldedTokenIn' }),
     publicClient.readContract({ address: router, abi: ROUTER_ABI, functionName: 'shieldedTokenOut' }),
     publicClient.readContract({ address: router, abi: ROUTER_ABI, functionName: 'ammRouter' }),
+    publicClient.readContract({ address: ammAdapter, abi: AMM_ADAPTER_ABI, functionName: 'swapRouter02' }),
     publicClient.readContract({ address: router, abi: ROUTER_ABI, functionName: 'poolFee' }),
     publicClient.readContract({ address: router, abi: ROUTER_ABI, functionName: 'settlementExecutor' }),
     publicClient.readContract({ address: router, abi: ROUTER_ABI, functionName: 'minBatchSize' }),
@@ -238,7 +248,8 @@ async function main() {
   assert(sameAddress(routerTokenOut, tokenOut), 'Router tokenOut() does not match TOKEN_OUT_ADDRESS.');
   assert(sameAddress(routerShieldedIn, shieldedTokenIn), 'Router shieldedTokenIn() does not match SHIELDED_TOKEN_IN_ADDRESS.');
   assert(sameAddress(routerShieldedOut, shieldedTokenOut), 'Router shieldedTokenOut() does not match SHIELDED_TOKEN_OUT_ADDRESS.');
-  assert(sameAddress(routerAmmRouter, ammRouter), 'Router ammRouter() does not match AMM_ROUTER_ADDRESS.');
+  assert(sameAddress(routerAmmRouter, ammAdapter), 'Router ammRouter() does not match AMM_ADAPTER_ADDRESS.');
+  assert(sameAddress(adapterSwapRouter02, ammRouter), 'AMM_ADAPTER_ADDRESS does not target AMM_ROUTER_ADDRESS.');
   assert(sameAddress(routerExecutor, executor.address), 'Router settlementExecutor() does not match SETTLEMENT_EXECUTOR_PRIVATE_KEY.');
   assert(sameAddress(inputUnderlying, tokenIn), 'ShieldedTokenIn underlying() does not match TOKEN_IN_ADDRESS.');
   assert(sameAddress(outputUnderlying, tokenOut), 'ShieldedTokenOut underlying() does not match TOKEN_OUT_ADDRESS.');
@@ -267,7 +278,7 @@ async function main() {
   console.log('Sepolia release preflight passed. No transaction was signed or broadcast.');
   console.log(`Router: ${router}`);
   console.log(`Pool: ${ammPool} (${inputSymbol}/${outputSymbol}, fee ${poolFee}, liquidity ${poolLiquidity.toString()})`);
-  console.log('Verified: code, router/wrapper wiring, executor binding, NoxCompute, pool pair/liquidity, and public frontend configuration.');
+  console.log('Verified: code, SwapRouter02 adapter/wrapper wiring, executor binding, NoxCompute, pool pair/liquidity, and public frontend configuration.');
 }
 
 main().catch((error) => {

@@ -53,10 +53,25 @@ async function requireDeployedContract(
   }
 }
 
+async function requireUniswapSwapRouter02(
+  publicClient: { getCode: (request: { address: `0x${string}` }) => Promise<`0x${string}` | undefined> },
+  address: `0x${string}`,
+) {
+  const code = await publicClient.getCode({ address });
+  // exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))
+  // is the SwapRouter02 selector. The legacy V3 SwapRouter includes a
+  // deadline in this struct and therefore has a different selector.
+  if (!code || code === '0x' || !code.toLowerCase().includes('04e45aaf')) {
+    throw new Error('AMM_ROUTER_ADDRESS must expose the Uniswap SwapRouter02 exactInputSingle ABI on Ethereum Sepolia');
+  }
+}
+
 /**
  * Deploys the production-shaped Sepolia stack. Token contracts and the AMM
- * router are intentionally supplied by configuration: this script never
- * deploys TestERC20 or DemoAMM outside the local test suite.
+ * router are intentionally supplied by configuration. A small adapter is
+ * deployed alongside the Nox contracts because the public SwapRouter02 ABI
+ * differs from the project's deadline-bearing AMM interface. This script
+ * never deploys TestERC20 or DemoAMM outside the local test suite.
  */
 async function main() {
   // Hardhat reads these variables while resolving the named network; validate
@@ -94,7 +109,7 @@ async function main() {
   await Promise.all([
     requireDeployedContract(publicClient, 'TOKEN_IN_ADDRESS', tokenIn),
     requireDeployedContract(publicClient, 'TOKEN_OUT_ADDRESS', tokenOut),
-    requireDeployedContract(publicClient, 'AMM_ROUTER_ADDRESS', ammRouter),
+    requireUniswapSwapRouter02(publicClient, ammRouter),
     requireDeployedContract(publicClient, 'NoxCompute', NOX_COMPUTE_SEPOLIA),
   ]);
   const executorCode = await publicClient.getCode({ address: settlementExecutor });
@@ -105,10 +120,11 @@ async function main() {
   console.log('Deploying from:', deployer.account.address);
   console.log('Input token:', tokenIn);
   console.log('Output token:', tokenOut);
-  console.log('AMM router:', ammRouter);
+  console.log('Uniswap SwapRouter02:', ammRouter);
   console.log('NoxCompute:', NOX_COMPUTE_SEPOLIA);
   console.log('Private settlement executor:', settlementExecutor);
 
+  const ammAdapter = await viem.deployContract('UniswapV3SwapRouter02Adapter', [ammRouter]);
   const shieldedTokenIn = await viem.deployContract('ShieldedToken', [
     tokenIn,
     'Shielded Input Token',
@@ -124,7 +140,7 @@ async function main() {
     shieldedTokenOut.address,
     tokenIn,
     tokenOut,
-    ammRouter,
+    ammAdapter.address,
     poolFee,
     settlementExecutor,
     minBatchSize,
@@ -132,6 +148,7 @@ async function main() {
   ]);
 
   console.log('\n--- deployed Sepolia addresses ---');
+  console.log(`AMM_ADAPTER_ADDRESS=${ammAdapter.address}`);
   console.log(`SHIELDED_TOKEN_IN_ADDRESS=${shieldedTokenIn.address}`);
   console.log(`SHIELDED_TOKEN_OUT_ADDRESS=${shieldedTokenOut.address}`);
   console.log(`SWAP_SHIELD_ROUTER_ADDRESS=${router.address}`);

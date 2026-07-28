@@ -7,7 +7,7 @@ before Railway deploys it.
 ## 1. Deploy the Sepolia contracts
 
 Create a local root `.env` from `.env.example`. Use real Sepolia ERC-20
-contracts and a liquid Uniswap V3-compatible pool; never use
+contracts, the official Uniswap `SwapRouter02`, and a liquid Uniswap V3 pool; never use
 `contracts/testdex/` for the public beta.
 
 Run:
@@ -126,7 +126,7 @@ Complete this table before publishing:
 | Router | Pending |
 | Shielded input token | Pending |
 | Shielded output token | Pending |
-| AMM router/pool/fee | Pending |
+| Uniswap SwapRouter02/pool/fee | Pending |
 | Deployment transactions | Pending |
 | Three-wallet settlement | Pending |
 | GitHub Actions run | [Passing release check](https://github.com/Some1Uknow/nox-swap-shield/actions/runs/30388862580) |
