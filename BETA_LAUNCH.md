@@ -44,8 +44,10 @@ PRIVATE_RELAY_AUTH_PRIVATE_KEY
   batch transactions.
 - Keep the relay-auth account separate and unfunded.
 - Use an HTTPS relay that supports Sepolia `eth_sendPrivateTransaction`.
-- Select existing, non-demo ERC-20s and a liquid Uniswap V3-compatible Sepolia
-  pool. The release preflight rejects zero pool liquidity.
+- Select existing, non-demo ERC-20s, the official Sepolia Uniswap
+  `SwapRouter02`, and a liquid Uniswap V3 pool. The deployment creates a
+  small compatibility adapter; it preserves order deadlines while invoking
+  Uniswap unchanged. The release preflight rejects zero pool liquidity.
 
 ## 2. Validate, deploy, and verify contracts
 
@@ -54,12 +56,13 @@ npm run release:check
 npm run deploy:sepolia
 ```
 
-Copy the three deployment outputs into root `.env`:
+Copy the four deployment outputs into root `.env`:
 
 ```text
 SHIELDED_TOKEN_IN_ADDRESS
 SHIELDED_TOKEN_OUT_ADDRESS
 SWAP_SHIELD_ROUTER_ADDRESS
+AMM_ADAPTER_ADDRESS
 ```
 
 Copy the matching public values into `frontend/.env`:

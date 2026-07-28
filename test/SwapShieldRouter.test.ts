@@ -143,6 +143,47 @@ async function validateOrder(router: any, validator: any, orderId: bigint) {
 }
 
 describe('SwapShieldRouter', { concurrency: false }, () => {
+  it('adapts the deadline-bearing router interface to SwapRouter02 without retaining input', async () => {
+    const { viem } = await nox.connect();
+    const [trader, recipient] = await viem.getWalletClients();
+    const publicClient = await viem.getPublicClient();
+    const tokenIn = await viem.deployContract('TestERC20', ['Test Wrapped Ether', 'tWETH', 18]);
+    const tokenOut = await viem.deployContract('TestERC20', ['Test USD Coin', 'tUSDC', 6]);
+    const swapRouter02 = await viem.deployContract('MockSwapRouter02', [tokenIn.address, tokenOut.address]);
+    const adapter = await viem.deployContract('UniswapV3SwapRouter02Adapter', [swapRouter02.address]);
+
+    const inputLiquidity = 100n * WAD;
+    const outputLiquidity = 200_000n * USDC;
+    await tokenIn.write.faucet([inputLiquidity], { account: trader.account });
+    await tokenOut.write.faucet([outputLiquidity], { account: trader.account });
+    await tokenIn.write.approve([swapRouter02.address, inputLiquidity], { account: trader.account });
+    await tokenOut.write.approve([swapRouter02.address, outputLiquidity], { account: trader.account });
+    await swapRouter02.write.addLiquidity([inputLiquidity, outputLiquidity], { account: trader.account });
+
+    const amountIn = WAD;
+    await tokenIn.write.faucet([amountIn], { account: trader.account });
+    await tokenIn.write.approve([adapter.address, amountIn], { account: trader.account });
+    const latestBlock = await publicClient.getBlock();
+    await adapter.write.exactInputSingle(
+      [{
+        tokenIn: tokenIn.address,
+        tokenOut: tokenOut.address,
+        fee: 3000,
+        recipient: recipient.account.address,
+        deadline: latestBlock.timestamp + 60n,
+        amountIn,
+        amountOutMinimum: 1n,
+        sqrtPriceLimitX96: 0n,
+      }],
+      { account: trader.account },
+    );
+
+    assert.equal(await tokenIn.read.balanceOf([adapter.address]), 0n);
+    assert.equal(await tokenIn.read.allowance([adapter.address, swapRouter02.address]), 0n);
+    const recipientOutput = (await tokenOut.read.balanceOf([recipient.account.address])) as bigint;
+    assert.ok(recipientOutput > 0n);
+  });
+
   it('only activates funded encrypted orders, then batches and allocates confidential output balances', async () => {
     const { executor, alice, bob, carol, shieldedIn, shieldedOut, tokenIn, router } = await deployFixture();
 

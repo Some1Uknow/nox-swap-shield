@@ -1,6 +1,6 @@
 # Swap Shield
 
-Swap Shield is an iExec Nox integration for Ethereum Sepolia. It batches confidential ERC-7984 swap intents against an existing Uniswap V3-compatible AMM without modifying the AMM.
+Swap Shield is an iExec Nox integration for Ethereum Sepolia. It batches confidential ERC-7984 swap intents against an existing Uniswap V3 pool without modifying Uniswap. A minimal adapter bridges the project's expiry-protected interface to Uniswap's deployed `SwapRouter02` ABI.
 
 This repository is a public, reproducible **Sepolia hackathon build**, not a mainnet financial product. Do not deploy it with valuable assets without an independent smart-contract, infrastructure, and private-relay review.
 
@@ -59,7 +59,7 @@ user
 - Node >=22.12 <27 and npm 11.12.1
 - Docker for the Nox Hardhat integration tests
 - An Ethereum Sepolia RPC endpoint
-- Existing Sepolia ERC-20s and a liquid Uniswap V3-compatible router/pool
+- Existing Sepolia ERC-20s, the official Sepolia Uniswap `SwapRouter02`, and a liquid Uniswap V3 pool
 - Standard, non-rebasing ERC-20s with no transfer tax or fee-on-transfer behavior
 - A funded EOA used only by the private settlement keeper plus a separate unfunded relay-auth EOA
 - An HTTPS private relay that supports eth_sendPrivateTransaction and returns a canonical transaction hash
@@ -88,7 +88,7 @@ cp .env.example .env
 Set these values:
 
 - SEPOLIA_RPC_URL and DEPLOYER_PRIVATE_KEY
-- TOKEN_IN_ADDRESS, TOKEN_OUT_ADDRESS, AMM_ROUTER_ADDRESS, AMM_POOL_ADDRESS, and POOL_FEE
+- TOKEN_IN_ADDRESS, TOKEN_OUT_ADDRESS, AMM_ROUTER_ADDRESS (official `SwapRouter02`), AMM_POOL_ADDRESS, and POOL_FEE
 - SETTLEMENT_EXECUTOR_ADDRESS, an EOA matching SETTLEMENT_EXECUTOR_PRIVATE_KEY
 - MIN_BATCH_SIZE (at least 3) and MAX_BATCH_SIZE (at most 12). The router also enforces a five-minute minimum settlement window before an order can enter a batch.
 - PRIVATE_RELAY_URL, PRIVATE_RELAY_AUTH_PRIVATE_KEY, and the server-only private transaction gas limits
