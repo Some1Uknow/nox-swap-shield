@@ -17,7 +17,19 @@ application until every release gate below passes.
 
 ## 1. Provision Sepolia infrastructure
 
-Fill the local root `.env` with real values for:
+Run this once from the repository root:
+
+```bash
+npm run bootstrap:sepolia
+```
+
+It generates three fresh **Sepolia-only** EOAs in the ignored local `.env`,
+derives the executor address, and validates the default standard Sepolia RPC
+and Flashbots Sepolia relay. It prints only the public addresses that need
+funding, never the private keys. You may replace either endpoint later with a
+provider of your choice.
+
+The `.env` then contains:
 
 ```text
 SEPOLIA_RPC_URL
@@ -27,8 +39,9 @@ PRIVATE_RELAY_URL
 PRIVATE_RELAY_AUTH_PRIVATE_KEY
 ```
 
-- Fund the deployer with Sepolia ETH for contract deployment.
-- Fund the settlement executor with Sepolia ETH for private batch transactions.
+- Fund the printed deployer address with Sepolia ETH for contract deployment.
+- Fund the printed settlement executor address with Sepolia ETH for private
+  batch transactions.
 - Keep the relay-auth account separate and unfunded.
 - Use an HTTPS relay that supports Sepolia `eth_sendPrivateTransaction`.
 - Select existing, non-demo ERC-20s and a liquid Uniswap V3-compatible Sepolia
