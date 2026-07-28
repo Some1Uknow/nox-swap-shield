@@ -1,0 +1,16 @@
+node_modules/
+frontend/node_modules/
+artifacts/
+cache/
+coverage/
+frontend/dist/
+
+# Never commit deployment credentials or provider URLs.
+.env
+.env.*
+!.env.example
+!.env.*.example
+.railway/
+
+*.log
+.DS_Store
