@@ -14,6 +14,14 @@ const allowedKeys = new Set([
   'VITE_CHAIN_ID',
   'VITE_POOL_FEE',
 ]);
+// Vercel injects this public observability payload at build time. Keep it out
+// of dotenv files and permit only this exact platform-managed VITE_ key; an
+// arbitrary VITE_ variable could otherwise accidentally expose configuration
+// that should never reach the browser bundle.
+const allowedBuildEnvironmentKeys = new Set([
+  ...allowedKeys,
+  'VITE_VERCEL_OBSERVABILITY_CLIENT_CONFIG',
+]);
 const addressKeys = [
   'VITE_TOKEN_IN_ADDRESS',
   'VITE_TOKEN_OUT_ADDRESS',
@@ -40,9 +48,9 @@ function parseEnv(source, fileName) {
   return values;
 }
 
-function assertAllowedKeys(values, label) {
+function assertAllowedKeys(values, label, permittedKeys = allowedKeys) {
   for (const key of Object.keys(values)) {
-    if (!allowedKeys.has(key)) {
+    if (!permittedKeys.has(key)) {
       throw new Error(`${label} contains ${key}. Browser configuration may contain only the documented public VITE_ deployment values.`);
     }
   }
@@ -90,7 +98,7 @@ async function loadProductionConfig() {
   const inheritedViteVariables = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => key.startsWith('VITE_')),
   );
-  assertAllowedKeys(inheritedViteVariables, 'the build environment');
+  assertAllowedKeys(inheritedViteVariables, 'the build environment', allowedBuildEnvironmentKeys);
   if (!sawConfigFile && Object.keys(inheritedViteVariables).length === 0) {
     throw new Error(
       'Missing production frontend configuration. Set the approved VITE_ values in frontend/.env or the deployment build environment.',
