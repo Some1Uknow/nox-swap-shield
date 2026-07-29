@@ -1,10 +1,10 @@
-# Swap Shield
+# NoxSwap
 
-Swap Shield is an iExec Nox integration for Ethereum Sepolia. It encrypts WETH order sizing, batches confidential ERC-7984 swap intents, and settles the aggregate through an existing Uniswap V3 pool. A minimal adapter bridges the expiry-protected router interface to Uniswap's deployed `SwapRouter02` ABI.
+NoxSwap is an iExec Nox integration for Ethereum Sepolia. It encrypts WETH order sizing, batches confidential ERC-7984 swap intents, and settles the aggregate through an existing Uniswap V3 pool. A minimal adapter bridges the expiry-protected router interface to Uniswap's deployed `SwapRouter02` ABI.
 
 This repository is a public, reproducible **Sepolia hackathon build** for developers and evaluators.
 
-## How Swap Shield works
+## How NoxSwap works
 
 - Users add WETH to a confidential ERC-7984 balance and submit an encrypted order amount with a minimum USDC receive amount.
 - The keeper validates encrypted funding, groups at least three distinct active wallets, and relays batch preparation and settlement.
@@ -97,7 +97,7 @@ npm run compile
 npm run deploy:sepolia
 ~~~
 
-The script validates Sepolia network identity, deployed token/router bytecode, an EOA executor, configuration values, token-pair compatibility, and supported batch bounds. It deploys the Swap Shield contracts against the configured Sepolia infrastructure.
+The script validates Sepolia network identity, deployed token/router bytecode, an EOA executor, configuration values, token-pair compatibility, and supported batch bounds. It deploys the NoxSwap contracts against the configured Sepolia infrastructure.
 
 Copy the three printed public addresses into frontend/.env using [frontend/.env.example](frontend/.env.example). Keep RPC credentials, relay URLs, and private keys in server-only variables.
 
@@ -192,7 +192,7 @@ Before publishing a live demo or repository link:
 
 ## Hackathon work and originality
 
-Swap Shield was built for the iExec Nox WTF Hackathon as an original integration.
+NoxSwap was built for the iExec Nox WTF Hackathon as an original integration.
 The application-specific router, private keeper, Sepolia deployment/preflight
 tooling, browser interface, tests, and documentation in this repository are the
 hackathon work. It uses the open-source iExec Nox packages, OpenZeppelin

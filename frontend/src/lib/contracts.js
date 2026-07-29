@@ -10,7 +10,7 @@ export const CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 11155111);
 export const POOL_FEE = Number(import.meta.env.VITE_POOL_FEE || 3000);
 // Official Uniswap V3 QuoterV2 deployment on Ethereum Sepolia. It is used
 // only with a static call to present a quote; settlement remains routed through
-// the configured Swap Shield contracts.
+// the configured NoxSwap contracts.
 export const UNISWAP_V3_QUOTER_V2 = '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3';
 
 export const ERC20_ABI = [
