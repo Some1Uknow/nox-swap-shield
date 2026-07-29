@@ -524,6 +524,12 @@ async function main() {
     address: ROUTER_ADDRESS,
     abi: ROUTER_ABI,
     eventName: 'OrderSubmitted',
+    // A standard HTTPS RPC endpoint can load-balance successive requests.
+    // Viem's default filter watcher stores an eth_newFilter ID on one node and
+    // then may poll another, which returns "filter not found". Polling logs is
+    // stateless and works with public Sepolia providers as well as paid RPCs.
+    poll: true,
+    pollingInterval: BATCH_WINDOW_MS,
     onLogs: (logs) => {
       for (const log of logs) {
         if (log.args.orderId !== undefined) trackedOrderIds.add(log.args.orderId);
