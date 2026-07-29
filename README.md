@@ -21,7 +21,7 @@ Public by design:
 - The aggregate input and AMM execution become public when a prepared batch is unwrapped and settled.
 - prepareBatch creates a publicly decryptable aggregate request once it is mined. A private relay reduces transaction-mempool exposure, but it does **not** guarantee aggregate secrecy or eliminate post-preparation MEV. Do not market this build as an atomic MEV-protection system without a purpose-built atomic builder/TEE integration.
 
-The provided keeper sends both preparation and settlement through a private relay and has no public settlement fallback. It sends an explicit empty privacy-hint list and authenticates the exact relay payload with a dedicated auth key. Its normal RPC is never asked to estimate or broadcast the settlement calldata, because the Nox decryption proof carries the aggregate plaintext. The relay and any builder it uses remain trusted infrastructure parties.
+The provided keeper sends both preparation and settlement through a private relay and has no public settlement fallback. Its signed-relay mode sends an explicit empty privacy-hint list and authenticates the exact relay payload with a dedicated auth key; its `flashbots-protect` mode submits the already-signed transaction through Flashbots Protect's private RPC, which is the supported Sepolia configuration. Its normal RPC is never asked to estimate or broadcast the settlement calldata, because the Nox decryption proof carries the aggregate plaintext. The relay and any builder it uses remain trusted infrastructure parties.
 
 ## Safety properties
 
@@ -62,7 +62,7 @@ user
 - Existing Sepolia ERC-20s, the official Sepolia Uniswap `SwapRouter02`, and a liquid Uniswap V3 pool
 - Standard, non-rebasing ERC-20s with no transfer tax or fee-on-transfer behavior
 - A funded EOA used only by the private settlement keeper plus a separate unfunded relay-auth EOA
-- An HTTPS private relay that supports eth_sendPrivateTransaction and returns a canonical transaction hash
+- An HTTPS private relay: either one supporting authenticated `eth_sendPrivateTransaction`, or Flashbots Protect's private RPC (`eth_sendRawTransaction`) for Sepolia
 
 ## Install and verify
 
@@ -91,7 +91,7 @@ Set these values:
 - TOKEN_IN_ADDRESS, TOKEN_OUT_ADDRESS, AMM_ROUTER_ADDRESS (official `SwapRouter02`), AMM_POOL_ADDRESS, and POOL_FEE
 - SETTLEMENT_EXECUTOR_ADDRESS, an EOA matching SETTLEMENT_EXECUTOR_PRIVATE_KEY
 - MIN_BATCH_SIZE (at least 3) and MAX_BATCH_SIZE (at most 12). The router also enforces a five-minute minimum settlement window before an order can enter a batch.
-- PRIVATE_RELAY_URL, PRIVATE_RELAY_AUTH_PRIVATE_KEY, and the server-only private transaction gas limits
+- PRIVATE_RELAY_URL, PRIVATE_RELAY_MODE, PRIVATE_RELAY_AUTH_PRIVATE_KEY, and the server-only private transaction gas limits
 
 Then deploy:
 
@@ -135,6 +135,7 @@ The root .env must contain:
 - SEPOLIA_RPC_URL
 - SETTLEMENT_EXECUTOR_PRIVATE_KEY
 - PRIVATE_RELAY_URL
+- PRIVATE_RELAY_MODE
 - PRIVATE_RELAY_AUTH_PRIVATE_KEY
 - PRIVATE_PREPARE_GAS_LIMIT, PRIVATE_SETTLEMENT_GAS_LIMIT, and MIN_PRIVATE_PRIORITY_FEE_WEI
 
