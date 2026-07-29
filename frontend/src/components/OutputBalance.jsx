@@ -13,7 +13,7 @@ function readableError(error) {
 
 function parsePositiveAmount(value, decimals) {
   const amount = parseUnits(value.trim(), decimals);
-  if (amount <= 0n) throw new Error('Withdrawal amount must be greater than zero.');
+  if (amount <= 0n) throw new Error('Claim amount must be greater than zero.');
   return amount;
 }
 
@@ -33,7 +33,7 @@ function parseUnwrapRequestId(receipt, shieldedToken) {
       // The receipt also contains logs from other contracts.
     }
   }
-  throw new Error('The withdrawal request was mined but its UnwrapRequested event was not found. Check the transaction before retrying.');
+  throw new Error('The claim request was mined but its event was not found. Check the transaction before retrying.');
 }
 
 export default function OutputBalance({ wallet }) {
@@ -115,15 +115,15 @@ export default function OutputBalance({ wallet }) {
       } catch {
         setBalance(null);
       }
-      setStatus('This public withdrawal was already finalized on-chain.');
+      setStatus('This public claim was already finalized on-chain.');
       return;
     }
     if (recipient.toLowerCase() !== wallet.address.toLowerCase()) {
-      throw new Error('This pending withdrawal belongs to a different wallet.');
+      throw new Error('This pending claim belongs to a different wallet.');
     }
-    setStatus('Waiting for the Nox public-decryption proof for this voluntary withdrawal…');
+    setStatus('Preparing your public claim…');
     const { decryptionProof } = await wallet.handleClient.publicDecrypt(requestId);
-    setStatus('Finalizing the public withdrawal to your wallet…');
+    setStatus('Sending USDC to your wallet…');
     await (await shieldedToken.finalizeUnwrap(requestId, decryptionProof)).wait();
     clearPendingRequest();
     setWithdrawAmount('');
@@ -135,16 +135,16 @@ export default function OutputBalance({ wallet }) {
       // again once the gateway catches up.
       setBalance(null);
     }
-    setStatus('Withdrawal finalized. Its amount is public on-chain, while your remaining confidential balance stays encrypted.');
+    setStatus('USDC claimed to your wallet. This claim amount is public on-chain.');
   }
 
   async function handleRevealBalance() {
     setBusyAction('balance');
     try {
       const amount = await refreshBalance();
-      setStatus(`Confidential output balance revealed locally: ${formatUnits(amount, metadata.decimals ?? 18)} ${metadata.symbol}.`);
+      setStatus(`Private balance: ${formatUnits(amount, metadata.decimals ?? 18)} ${metadata.symbol}.`);
     } catch (error) {
-      setStatus(`Could not decrypt the confidential output balance: ${readableError(error)}`);
+      setStatus(`Could not reveal your private balance: ${readableError(error)}`);
     } finally {
       setBusyAction(null);
     }
@@ -155,18 +155,21 @@ export default function OutputBalance({ wallet }) {
     setBusyAction('withdraw');
     let requestId = '';
     try {
-      const amount = parsePositiveAmount(withdrawAmount, metadata.decimals);
-      const available = await refreshBalance();
-      if (amount > available) throw new Error('Withdrawal amount exceeds the confidential output balance.');
+      const available = balance ?? await refreshBalance();
+      const amount = withdrawAmount.trim()
+        ? parsePositiveAmount(withdrawAmount, metadata.decimals)
+        : available;
+      if (amount <= 0n) throw new Error('There is no private output available to claim.');
+      if (amount > available) throw new Error('Claim amount exceeds your private balance.');
 
       const shieldedToken = await getContract(ADDRESSES.shieldedTokenOut, SHIELDED_TOKEN_ABI, wallet.signer);
-      setStatus('Encrypting the withdrawal amount locally…');
+      setStatus('Preparing your claim…');
       const { handle, handleProof } = await wallet.handleClient.encryptInput(
         amount,
         'uint256',
         ADDRESSES.shieldedTokenOut,
       );
-      setStatus('Requesting a public withdrawal. This intentionally makes the withdrawn amount public…');
+      setStatus('Requesting USDC to your wallet…');
       const receipt = await (await shieldedToken['unwrap(address,address,bytes32,bytes)'](
         wallet.address,
         wallet.address,
@@ -179,8 +182,8 @@ export default function OutputBalance({ wallet }) {
     } catch (error) {
       setStatus(
         requestId
-          ? `Withdrawal request is on-chain, but finalization is still pending. Use “Finalize pending withdrawal” when the Nox proof is available. ${readableError(error)}`
-          : `Withdrawal failed: ${readableError(error)}`,
+          ? `Your claim request is on-chain, but finalization is still pending. Use “Finish claim” when the Nox proof is available. ${readableError(error)}`
+          : `Claim failed: ${readableError(error)}`,
       );
     } finally {
       setBusyAction(null);
@@ -194,7 +197,7 @@ export default function OutputBalance({ wallet }) {
       const shieldedToken = await getContract(ADDRESSES.shieldedTokenOut, SHIELDED_TOKEN_ABI, wallet.signer);
       await finalizeWithdrawal(pendingRequestId, shieldedToken);
     } catch (error) {
-      setStatus(`Pending withdrawal could not yet be finalized: ${readableError(error)}`);
+      setStatus(`Claim could not yet be finalized: ${readableError(error)}`);
     } finally {
       setBusyAction(null);
     }
@@ -203,38 +206,44 @@ export default function OutputBalance({ wallet }) {
   const metadataReady = metadata.decimals !== null;
 
   return (
-    <div className="panel balance-panel">
-      <p className="panel-title">Your private {metadata.symbol}</p>
-      <p className="helper-text">
-        Reveal this balance only in this wallet session. Withdrawing to your normal wallet intentionally makes that amount public on-chain.
-      </p>
+    <div className="claim-panel">
       <div className="row top-gap-sm">
         <button className="secondary" disabled={!metadataReady || busyAction !== null} onClick={handleRevealBalance}>
-          {busyAction === 'balance' ? 'Decrypting…' : 'Reveal private balance'}
+          {busyAction === 'balance' ? 'Revealing…' : 'Reveal balance'}
         </button>
         {balance !== null && (
-          <span className="order-amount revealed-value" aria-live="polite">
-            {formatUnits(balance, metadata.decimals)} {metadata.symbol}
-          </span>
+          <>
+            <span className="order-amount revealed-value" aria-live="polite">
+              {formatUnits(balance, metadata.decimals)} {metadata.symbol}
+            </span>
+            <button className="primary claim-button" disabled={busyAction !== null || balance <= 0n || Boolean(pendingRequestId)} onClick={handleWithdraw}>
+              {busyAction === 'withdraw' ? 'Claiming…' : 'Claim to wallet'}
+            </button>
+          </>
         )}
       </div>
 
-      <div className="field top-gap-md">
-        <label htmlFor="withdraw-output">Amount to withdraw publicly ({metadata.symbol})</label>
-        <input
-          id="withdraw-output"
-          inputMode="decimal"
-          value={withdrawAmount}
-          onChange={(event) => setWithdrawAmount(event.target.value)}
-          disabled={!metadataReady || busyAction !== null || Boolean(pendingRequestId)}
-        />
-      </div>
-      <button className="secondary" disabled={!metadataReady || busyAction !== null || Boolean(pendingRequestId)} onClick={handleWithdraw}>
-        {busyAction === 'withdraw' ? 'Withdrawing…' : 'Withdraw to wallet'}
-      </button>
+      {balance !== null && !pendingRequestId && (
+        <details className="partial-claim">
+          <summary>Claim a different amount</summary>
+          <div className="field">
+            <label htmlFor="withdraw-output">Amount ({metadata.symbol})</label>
+            <input
+              id="withdraw-output"
+              inputMode="decimal"
+              value={withdrawAmount}
+              onChange={(event) => setWithdrawAmount(event.target.value)}
+              disabled={!metadataReady || busyAction !== null}
+            />
+          </div>
+          <button className="secondary" disabled={!metadataReady || busyAction !== null} onClick={handleWithdraw}>
+            {busyAction === 'withdraw' ? 'Claiming…' : 'Claim amount'}
+          </button>
+        </details>
+      )}
       {pendingRequestId && (
         <button className="secondary button-spaced" disabled={busyAction !== null} onClick={handleFinalizePending}>
-          {busyAction === 'finalize' ? 'Finalizing…' : 'Finalize pending withdrawal'}
+          {busyAction === 'finalize' ? 'Finishing…' : 'Finish claim'}
         </button>
       )}
       {status && <p className="helper-text status-message" role="status">{status}</p>}

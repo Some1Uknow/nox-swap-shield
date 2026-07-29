@@ -12,6 +12,7 @@ function readableError(error) {
 
 export default function OrderList({ wallet, refreshKey }) {
   const [orders, setOrders] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   const [metadata, setMetadata] = useState({ decimals: 18, symbol: 'output token' });
   const [status, setStatus] = useState('');
   const [cancellingId, setCancellingId] = useState(null);
@@ -51,6 +52,7 @@ export default function OrderList({ wallet, refreshKey }) {
           setMetadata({ decimals: Number(decimals), symbol });
           setOrders(loaded.reverse());
           setStatus(count > MAX_VISIBLE_ORDERS ? `Showing the newest ${MAX_VISIBLE_ORDERS} of ${count} orders.` : '');
+          setLoaded(true);
         }
       } catch (error) {
         if (!cancelled) setStatus(`Order refresh failed: ${readableError(error)}`);
@@ -73,7 +75,7 @@ export default function OrderList({ wallet, refreshKey }) {
       setOrders((current) => current.map((order) => (
         order.id === orderId ? { ...order, status: 5 } : order
       )));
-      setStatus(`Order #${orderId} cancelled; any funded confidential input was returned to your balance.`);
+      setStatus(`Swap #${orderId} cancelled. Your private input is available again.`);
     } catch (error) {
       setStatus(`Cancellation failed: ${readableError(error)}`);
     } finally {
@@ -83,26 +85,25 @@ export default function OrderList({ wallet, refreshKey }) {
 
   const ownOrders = orders.filter((order) => order.trader.toLowerCase() === wallet.address.toLowerCase());
 
+  if (loaded && ownOrders.length === 0 && !status) return null;
+
   return (
     <div className="panel activity-panel">
       <div className="panel-heading-row">
-        <div>
-          <p className="panel-title">Your private swaps</p>
-          <p className="helper-text">Orders refresh every 20 seconds. Only this wallet’s activity is shown here.</p>
-        </div>
+        <p className="panel-title">Your swaps</p>
         <span className="refresh-indicator"><i aria-hidden="true" /> Live</span>
       </div>
-      {ownOrders.length === 0 && <p className="empty-state">No private swaps from this wallet yet.</p>}
+      {!loaded && <p className="empty-state">Loading…</p>}
+      {loaded && ownOrders.length === 0 && <p className="empty-state">No swaps yet.</p>}
 
       {ownOrders.map((order) => {
         const isCancellable = order.status === 1 || order.status === 2;
         return (
           <div className="order-card" key={order.id}>
             <div>
-              <div className="order-meta">Private swap #{order.id}</div>
-              <div className="order-amount hidden-value">•••• encrypted trade amount</div>
-              <div className="order-meta">Minimum receive: {formatUnits(order.minOut, metadata.decimals)} {metadata.symbol}</div>
-              <div className="order-meta">Expires {new Date(order.deadline * 1000).toLocaleTimeString()}</div>
+              <div className="order-meta">Swap #{order.id}</div>
+              <div className="order-amount hidden-value">Encrypted WETH amount</div>
+              <div className="order-meta">Min. {formatUnits(order.minOut, metadata.decimals)} {metadata.symbol}</div>
             </div>
 
             <div className="order-actions">

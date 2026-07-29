@@ -9,27 +9,13 @@ const OutputBalance = lazy(() => import('./components/OutputBalance.jsx'));
 function ProductNarrative() {
   return (
     <section className="hero" aria-labelledby="product-title">
-      <p className="eyebrow"><span className="eyebrow-dot" /> Nox private batch swaps</p>
-      <h1 id="product-title">Trade size<br />stays <em>yours.</em></h1>
+      <p className="eyebrow"><span className="eyebrow-dot" /> Private WETH → USDC</p>
+      <h1 id="product-title">Swap size,<br /><em>not exposure.</em></h1>
       <p className="subtitle">
-        A private WETH → USDC swap. Your input is encrypted, orders are batched across wallets, and the aggregate settles through the AMM.
+        Your order size is encrypted. The batch settles through Uniswap when three wallets are ready.
       </p>
-      <dl className="feature-list">
-        <div>
-          <dt>Private by default</dt>
-          <dd>Your WETH amount reaches the router encrypted.</dd>
-        </div>
-        <div>
-          <dt>AMM compatible</dt>
-          <dd>The batch settles through Uniswap without changing the pool.</dd>
-        </div>
-        <div>
-          <dt>Clear boundaries</dt>
-          <dd>Funding, your minimum receive, and the aggregate settlement stay public.</dd>
-        </div>
-      </dl>
       <p className="privacy-brief">
-        Settlement uses a private relay, which reduces public-mempool exposure. It is not full anonymity or atomic MEV protection.
+        Deposit, minimum receive, and aggregate settlement are public. This is size privacy—not full anonymity or atomic MEV protection.
       </p>
     </section>
   );
@@ -40,10 +26,10 @@ function SwapPreview({ onConnect, connectError }) {
     <div className="swap-card panel swap-preview">
       <div className="swap-card-heading">
         <p className="swap-title">Swap</p>
-        <span className="privacy-chip">Private size</span>
+        <span className="privacy-chip">Private</span>
       </div>
       <div className="token-field">
-        <div className="token-field-label"><span>You pay</span><span>Encrypted</span></div>
+        <div className="token-field-label"><span>You pay</span><span>Private</span></div>
         <div className="token-control">
           <span className="preview-amount">0</span>
           <span className="token-chip"><TokenLogo token="WETH" size={28} />WETH<b aria-hidden="true">⌄</b></span>
@@ -51,7 +37,7 @@ function SwapPreview({ onConnect, connectError }) {
       </div>
       <div className="swap-arrow" aria-hidden="true">↓</div>
       <div className="token-field">
-        <div className="token-field-label"><span>You receive</span><span>Minimum is public</span></div>
+        <div className="token-field-label"><span>You receive</span><span>Protected</span></div>
         <div className="token-control">
           <span className="preview-amount">0</span>
           <span className="token-chip"><TokenLogo token="USDC" size={28} />USDC<b aria-hidden="true">⌄</b></span>
@@ -60,7 +46,7 @@ function SwapPreview({ onConnect, connectError }) {
       <button className="primary swap-cta" onClick={onConnect}>Connect wallet</button>
       <div className="swap-card-footer">
         <span>Sepolia</span>
-        <span>3 wallets per batch</span>
+        <span>3-wallet batch</span>
       </div>
       {connectError && <p className="helper-text error-text" role="alert">{connectError}</p>}
     </div>
@@ -125,8 +111,11 @@ export default function App() {
               </div>
               <Suspense fallback={<div className="panel"><p className="helper-text">Loading swap…</p></div>}>
                 <OrderForm wallet={wallet} onOrderSubmitted={() => setRefreshKey((value) => value + 1)} />
-                <OutputBalance wallet={wallet} />
                 <OrderList wallet={wallet} refreshKey={refreshKey} />
+                <details className="claim-drawer">
+                  <summary><span>Private USDC</span><span>Reveal or claim</span></summary>
+                  <OutputBalance wallet={wallet} />
+                </details>
               </Suspense>
             </>
           )}
