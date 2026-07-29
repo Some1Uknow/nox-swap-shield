@@ -8,6 +8,10 @@ export const ADDRESSES = {
 
 export const CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 11155111);
 export const POOL_FEE = Number(import.meta.env.VITE_POOL_FEE || 3000);
+// Official Uniswap V3 QuoterV2 deployment on Ethereum Sepolia. It is used
+// only with a static call to present a quote; settlement remains routed through
+// the configured Swap Shield contracts.
+export const UNISWAP_V3_QUOTER_V2 = '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3';
 
 export const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
@@ -49,6 +53,10 @@ export const ROUTER_ABI = [
   'event BatchPrepared(uint256 indexed batchId, uint32 orderCount, uint256 totalMinOut, uint48 deadline)',
   'event BatchSettled(uint256 indexed batchId)',
   'event BatchRefunded(uint256 indexed batchId)',
+];
+
+export const QUOTER_V2_ABI = [
+  'function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)',
 ];
 
 export function configuredAddressEntries() {

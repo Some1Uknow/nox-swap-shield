@@ -398,8 +398,49 @@ h1 em {
   letter-spacing: -0.055em;
 }
 
+.quote-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  margin: 13px 2px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.quote-live {
+  color: var(--forest);
+  font-weight: 700;
+}
+
+.quote-row strong {
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: -0.02em;
+}
+
+.slippage-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.slippage-control select {
+  border: 0;
+  border-radius: 5px;
+  outline: 0;
+  padding: 3px 4px;
+  background: #eef1ec;
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 650;
+}
+
 .min-out-note {
-  margin: 13px 2px 18px;
+  margin: 9px 2px 18px;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.5;

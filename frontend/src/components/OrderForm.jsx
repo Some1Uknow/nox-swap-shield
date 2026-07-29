@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { formatUnits, parseUnits } from 'ethers';
-import { ADDRESSES, ERC20_ABI, ROUTER_ABI, SHIELDED_TOKEN_ABI } from '../lib/contracts.js';
+import {
+  ADDRESSES,
+  ERC20_ABI,
+  POOL_FEE,
+  QUOTER_V2_ABI,
+  ROUTER_ABI,
+  SHIELDED_TOKEN_ABI,
+  UNISWAP_V3_QUOTER_V2,
+} from '../lib/contracts.js';
 import { getContract } from '../lib/nox.js';
 import TokenLogo from './TokenLogo.jsx';
 
@@ -14,12 +22,19 @@ function parsePositiveAmount(value, decimals, label) {
   return amount;
 }
 
+function applySlippage(amount, basisPoints) {
+  return (amount * BigInt(10_000 - basisPoints)) / 10_000n;
+}
+
 export default function OrderForm({ wallet, onOrderSubmitted }) {
   const [fundAmount, setFundAmount] = useState('');
   const [orderAmount, setOrderAmount] = useState('');
   const [minOut, setMinOut] = useState('');
   const [inputMetadata, setInputMetadata] = useState({ decimals: null, symbol: 'input token' });
   const [outputMetadata, setOutputMetadata] = useState({ decimals: null, symbol: 'output token' });
+  const [quote, setQuote] = useState(null);
+  const [quoteStatus, setQuoteStatus] = useState('Enter an amount to fetch a live Uniswap quote.');
+  const [slippageBps, setSlippageBps] = useState(100);
   const [status, setStatus] = useState('');
   const [busyAction, setBusyAction] = useState(null);
 
@@ -50,6 +65,58 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
       cancelled = true;
     };
   }, [wallet]);
+
+  useEffect(() => {
+    if (inputMetadata.decimals === null || outputMetadata.decimals === null || !orderAmount.trim()) {
+      setQuote(null);
+      setQuoteStatus('Enter an amount to fetch a live Uniswap quote.');
+      return undefined;
+    }
+
+    let amountIn;
+    try {
+      amountIn = parsePositiveAmount(orderAmount, inputMetadata.decimals, 'Sell amount');
+    } catch {
+      setQuote(null);
+      setQuoteStatus(`Enter a valid ${inputMetadata.symbol} amount.`);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      async function fetchQuote() {
+        try {
+          setQuoteStatus('Fetching live Uniswap quote…');
+          const quoter = await getContract(UNISWAP_V3_QUOTER_V2, QUOTER_V2_ABI, wallet.provider);
+          const [amountOut] = await quoter.quoteExactInputSingle.staticCall([
+            ADDRESSES.tokenIn,
+            ADDRESSES.tokenOut,
+            amountIn,
+            POOL_FEE,
+            0,
+          ]);
+          if (amountOut <= 0n) throw new Error('The pool returned a zero quote.');
+          if (!cancelled) {
+            setQuote({ amountIn: amountIn.toString(), amountOut });
+            setMinOut(formatUnits(applySlippage(amountOut, slippageBps), outputMetadata.decimals));
+            setQuoteStatus('Live Uniswap quote');
+          }
+        } catch (error) {
+          if (!cancelled) {
+            setQuote(null);
+            setQuoteStatus(`Quote unavailable: ${readableError(error)}`);
+          }
+        }
+      }
+
+      void fetchQuote();
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [inputMetadata, orderAmount, outputMetadata, slippageBps, wallet.provider]);
 
   async function handleFund() {
     if (inputMetadata.decimals === null) return;
@@ -97,9 +164,13 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
     let shieldedToken;
     let operatorGranted = false;
     let orderSubmitted = false;
+    let failureMessage = '';
     try {
       const amount = parsePositiveAmount(orderAmount, inputMetadata.decimals, 'Sell amount');
       const minOutAmount = parsePositiveAmount(minOut, outputMetadata.decimals, 'Minimum output');
+      if (!quote || quote.amountIn !== amount.toString()) {
+        throw new Error('Wait for a current live quote before placing the swap.');
+      }
       const latestBlock = await wallet.provider.getBlock('latest');
       if (!latestBlock) throw new Error('Could not read the latest Sepolia block for the order deadline.');
       const deadline = Number(latestBlock.timestamp) + 15 * 60;
@@ -108,10 +179,6 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
         getContract(ADDRESSES.router, ROUTER_ABI, wallet.signer),
       ]);
       shieldedToken = shielded;
-
-      setStatus('Authorizing the router for this short order window…');
-      await (await shieldedToken.setOperator(ADDRESSES.router, deadline)).wait();
-      operatorGranted = true;
 
       setStatus('Encrypting the sell amount locally…');
       const { handle, handleProof } = await wallet.handleClient.encryptInput(
@@ -122,13 +189,19 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
         ADDRESSES.router,
       );
 
+      setStatus('Authorizing the router for this short order window…');
+      await (await shieldedToken.setOperator(ADDRESSES.router, deadline)).wait();
+      operatorGranted = true;
+
       setStatus('Submitting the encrypted order…');
       await (await router.submitOrder(handle, handleProof, minOutAmount, deadline)).wait();
       orderSubmitted = true;
       setOrderAmount('');
+      setMinOut('');
       onOrderSubmitted?.();
     } catch (error) {
-      setStatus(`Order submission failed: ${readableError(error)}`);
+      failureMessage = readableError(error);
+      setStatus(`Private swap was not submitted: ${failureMessage}`);
     } finally {
       if (shieldedToken && operatorGranted) {
         try {
@@ -138,6 +211,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
           setStatus('Revoking temporary router authorization…');
           await (await shieldedToken.setOperator(ADDRESSES.router, 0)).wait();
           if (orderSubmitted) setStatus('Order submitted for funding validation, then private batch settlement.');
+          else setStatus(`Private swap was not submitted: ${failureMessage || 'the order flow did not complete'}. Temporary router authorization was revoked.`);
         } catch (error) {
           setStatus(
             orderSubmitted
@@ -185,7 +259,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
       <div className="token-field">
         <div className="token-field-label">
           <label htmlFor="min-out">Minimum you receive</label>
-          <span>Public slippage protection</span>
+          <span>Public protection</span>
         </div>
         <div className="token-control">
           <input
@@ -200,10 +274,24 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
         </div>
       </div>
 
+      <div className="quote-row" aria-live="polite">
+        <span className={quote ? 'quote-live' : 'quote-status'}>{quoteStatus}</span>
+        {quote && (
+          <strong>{formatUnits(quote.amountOut, outputMetadata.decimals)} {outputMetadata.symbol}</strong>
+        )}
+        <label className="slippage-control">
+          Slippage
+          <select value={slippageBps} onChange={(event) => setSlippageBps(Number(event.target.value))} disabled={busyAction !== null}>
+            <option value={50}>0.5%</option>
+            <option value={100}>1%</option>
+            <option value={200}>2%</option>
+          </select>
+        </label>
+      </div>
       <p className="min-out-note">
-        This beta does not show a quote. Enter the least {outputMetadata.symbol} you will accept; that limit is public and protects your order from excess slippage.
+        The live quote is indicative. Your minimum is set from the selected slippage and remains public to protect the delayed batch settlement.
       </p>
-      <button className="primary swap-cta" onClick={handleSubmitOrder} disabled={!metadataReady || busyAction !== null}>
+      <button className="primary swap-cta" onClick={handleSubmitOrder} disabled={!metadataReady || !quote || busyAction !== null}>
         {busyAction === 'submit' ? 'Placing private swap…' : 'Place private swap'}
       </button>
       <div className="swap-card-footer">
