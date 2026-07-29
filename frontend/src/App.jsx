@@ -10,12 +10,12 @@ function ProductNarrative() {
   return (
     <section className="hero" aria-labelledby="product-title">
       <p className="eyebrow"><span className="eyebrow-dot" /> Private WETH → USDC</p>
-      <h1 id="product-title">Swap size,<br /><em>not exposure.</em></h1>
+      <h1 id="product-title">Private sizing,<br /><em>native DeFi.</em></h1>
       <p className="subtitle">
-        Your order size is encrypted. The batch settles through Uniswap when three wallets are ready.
+        Encrypt your WETH order size and receive private USDC after a Uniswap batch settles.
       </p>
       <p className="privacy-brief">
-        Deposit, minimum receive, and aggregate settlement are public. This is size privacy—not full anonymity or atomic MEV protection.
+        Encrypted order sizing · Three-wallet batch execution · Wallet-native on Sepolia
       </p>
     </section>
   );
@@ -46,7 +46,7 @@ function SwapPreview({ onConnect, connectError }) {
       <button className="primary swap-cta" onClick={onConnect}>Connect wallet</button>
       <div className="swap-card-footer">
         <span>Sepolia</span>
-        <span>3-wallet batch</span>
+        <span>Batch execution</span>
       </div>
       {connectError && <p className="helper-text error-text" role="alert">{connectError}</p>}
     </div>
@@ -117,8 +117,8 @@ export default function App() {
                   onOrderCancelled={() => setRefreshKey((value) => value + 1)}
                 />
                 <details className="claim-drawer">
-                  <summary><span>Private WETH</span><span>Refund or claim</span></summary>
-                  <p className="claim-context">Cancelled or expired swaps return here. Revealing is private; claiming WETH to your wallet is public.</p>
+                  <summary><span>Private WETH</span><span>Manage balance</span></summary>
+                  <p className="claim-context">Cancelled and expired orders return WETH here. Reveal your balance or send WETH to your wallet.</p>
                   <OutputBalance
                     wallet={wallet}
                     tokenAddress={import.meta.env.VITE_TOKEN_IN_ADDRESS}
@@ -128,7 +128,7 @@ export default function App() {
                 </details>
                 <details className="claim-drawer">
                   <summary><span>Private USDC</span><span>Reveal or claim</span></summary>
-                  <p className="claim-context">USDC appears here only after a batch settles.</p>
+                  <p className="claim-context">Completed batches allocate USDC to your private balance.</p>
                   <OutputBalance wallet={wallet} refreshKey={refreshKey} />
                 </details>
               </Suspense>
@@ -139,7 +139,7 @@ export default function App() {
 
       <footer className="site-footer">
         <span>Built with iExec Nox</span>
-        <span>Private trade sizing · Public AMM settlement</span>
+        <span>Encrypted trade sizing · Batched AMM settlement</span>
       </footer>
     </div>
   );

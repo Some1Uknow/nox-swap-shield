@@ -8,11 +8,10 @@ const MAX_VISIBLE_ORDERS = 50;
 
 function statusLabel(order, activeWalletCount, minBatchSize) {
   if ((order.status === 1 || order.status === 2) && order.deadline <= order.now) {
-    return 'Expired — reclaim WETH';
+    return 'Window closed';
   }
   if (order.status === 2) {
-    const missingWallets = Math.max(0, minBatchSize - activeWalletCount);
-    return missingWallets === 1 ? 'Waiting for 1 wallet' : `Waiting for ${missingWallets} wallets`;
+    return activeWalletCount >= minBatchSize ? 'Batching privately' : 'Queued for batch';
   }
   return STATUS_LABELS[order.status] ?? 'Unknown';
 }
@@ -123,16 +122,15 @@ export default function OrderList({ wallet, refreshKey, onOrderCancelled }) {
       {ownOrders.map((order) => {
         const isCancellable = order.status === 1 || order.status === 2;
         const isExpired = isCancellable && order.deadline <= order.now;
-        const waitingFor = Math.max(0, batchRequirement - activeWalletCount);
         return (
           <div className="order-card" key={order.id}>
             <div>
               <div className="order-meta">Swap #{order.id}</div>
               <div className="order-amount hidden-value">Encrypted WETH amount</div>
               <div className="order-meta">Min. {formatUnits(order.minOut, metadata.decimals)} {metadata.symbol}</div>
-              {isExpired && <div className="order-meta order-warning">No batch formed before the deadline. Return the private WETH below.</div>}
-              {!isExpired && order.status === 2 && waitingFor > 0 && (
-                <div className="order-meta">Needs {waitingFor} more distinct wallet{waitingFor === 1 ? '' : 's'} before the deadline.</div>
+              {isExpired && <div className="order-meta order-warning">Return the encrypted WETH to your private balance below.</div>}
+              {!isExpired && order.status === 2 && activeWalletCount < batchRequirement && (
+                <div className="order-meta">Your encrypted order is in the next settlement queue.</div>
               )}
             </div>
 
