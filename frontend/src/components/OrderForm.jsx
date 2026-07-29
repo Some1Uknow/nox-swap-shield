@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { formatUnits, parseUnits } from 'ethers';
 import { ADDRESSES, ERC20_ABI, ROUTER_ABI, SHIELDED_TOKEN_ABI } from '../lib/contracts.js';
 import { getContract } from '../lib/nox.js';
+import TokenLogo from './TokenLogo.jsx';
 
 function readableError(error) {
   return error?.shortMessage || error?.reason || error?.message || 'Transaction failed.';
@@ -175,7 +176,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
             onChange={(event) => setOrderAmount(event.target.value)}
             disabled={!metadataReady || busyAction !== null}
           />
-          <span className="token-chip token-in"><i aria-hidden="true">Ξ</i>{inputMetadata.symbol}</span>
+          <span className="token-chip token-in"><TokenLogo token="WETH" size={26} />{inputMetadata.symbol}<b aria-hidden="true">⌄</b></span>
         </div>
       </div>
 
@@ -195,7 +196,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
             onChange={(event) => setMinOut(event.target.value)}
             disabled={!metadataReady || busyAction !== null}
           />
-          <span className="token-chip token-out"><i aria-hidden="true">$</i>{outputMetadata.symbol}</span>
+          <span className="token-chip token-out"><TokenLogo token="USDC" size={26} />{outputMetadata.symbol}<b aria-hidden="true">⌄</b></span>
         </div>
       </div>
 
