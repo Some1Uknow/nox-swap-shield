@@ -203,14 +203,14 @@ export default function OutputBalance({ wallet }) {
   const metadataReady = metadata.decimals !== null;
 
   return (
-    <div className="panel">
-      <p className="panel-title">Confidential output balance</p>
+    <div className="panel balance-panel">
+      <p className="panel-title">Your private {metadata.symbol}</p>
       <p className="helper-text">
-        Reveal this balance only in your wallet session. Withdrawing output to your normal wallet intentionally makes the withdrawn amount public on-chain.
+        Reveal this balance only in this wallet session. Withdrawing to your normal wallet intentionally makes that amount public on-chain.
       </p>
       <div className="row top-gap-sm">
         <button className="secondary" disabled={!metadataReady || busyAction !== null} onClick={handleRevealBalance}>
-          {busyAction === 'balance' ? 'Decrypting…' : 'Reveal output balance'}
+          {busyAction === 'balance' ? 'Decrypting…' : 'Reveal private balance'}
         </button>
         {balance !== null && (
           <span className="order-amount revealed-value" aria-live="polite">
@@ -220,7 +220,7 @@ export default function OutputBalance({ wallet }) {
       </div>
 
       <div className="field top-gap-md">
-        <label htmlFor="withdraw-output">Public withdrawal amount ({metadata.symbol})</label>
+        <label htmlFor="withdraw-output">Amount to withdraw publicly ({metadata.symbol})</label>
         <input
           id="withdraw-output"
           inputMode="decimal"
@@ -230,7 +230,7 @@ export default function OutputBalance({ wallet }) {
         />
       </div>
       <button className="secondary" disabled={!metadataReady || busyAction !== null || Boolean(pendingRequestId)} onClick={handleWithdraw}>
-        {busyAction === 'withdraw' ? 'Withdrawing…' : 'Withdraw output publicly'}
+        {busyAction === 'withdraw' ? 'Withdrawing…' : 'Withdraw to wallet'}
       </button>
       {pendingRequestId && (
         <button className="secondary button-spaced" disabled={busyAction !== null} onClick={handleFinalizePending}>

@@ -17,6 +17,7 @@ export const ERC20_ABI = [
 ];
 
 export const SHIELDED_TOKEN_ABI = [
+  'function underlying() view returns (address)',
   'function wrap(address to, uint256 amount) returns (bytes32)',
   'function unwrap(address from, address to, bytes32 encryptedAmount, bytes inputProof) returns (bytes32)',
   'function finalizeUnwrap(bytes32 unwrapRequestId, bytes decryptedAmountAndProof)',
