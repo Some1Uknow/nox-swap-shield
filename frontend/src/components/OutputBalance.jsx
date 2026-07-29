@@ -17,8 +17,8 @@ function parsePositiveAmount(value, decimals) {
   return amount;
 }
 
-function pendingRequestStorageKey(walletAddress) {
-  return `swap-shield:pending-unwrap:${ADDRESSES.shieldedTokenOut.toLowerCase()}:${walletAddress.toLowerCase()}`;
+function pendingRequestStorageKey(walletAddress, shieldedTokenAddress) {
+  return `swap-shield:pending-unwrap:${shieldedTokenAddress.toLowerCase()}:${walletAddress.toLowerCase()}`;
 }
 
 function parseUnwrapRequestId(receipt, shieldedToken) {
@@ -36,22 +36,32 @@ function parseUnwrapRequestId(receipt, shieldedToken) {
   throw new Error('The claim request was mined but its event was not found. Check the transaction before retrying.');
 }
 
-export default function OutputBalance({ wallet }) {
-  const [metadata, setMetadata] = useState({ decimals: null, symbol: 'output token' });
+export default function OutputBalance({
+  wallet,
+  tokenAddress = ADDRESSES.tokenOut,
+  shieldedTokenAddress = ADDRESSES.shieldedTokenOut,
+  refreshKey = 0,
+}) {
+  const [metadata, setMetadata] = useState({ decimals: null, symbol: 'token' });
   const [balance, setBalance] = useState(null);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [pendingRequestId, setPendingRequestId] = useState('');
   const [status, setStatus] = useState('');
   const [busyAction, setBusyAction] = useState(null);
-  const storageKey = useMemo(() => pendingRequestStorageKey(wallet.address), [wallet.address]);
+  const storageKey = useMemo(
+    () => pendingRequestStorageKey(wallet.address, shieldedTokenAddress),
+    [wallet.address, shieldedTokenAddress],
+  );
+  const assetName = metadata.symbol === 'token' ? 'token' : metadata.symbol;
+  const withdrawInputId = `withdraw-${shieldedTokenAddress.slice(2, 10)}`;
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadMetadata() {
       try {
-        const outputToken = await getContract(ADDRESSES.tokenOut, ERC20_ABI, wallet.provider);
-        const [decimals, symbol] = await Promise.all([outputToken.decimals(), outputToken.symbol()]);
+        const token = await getContract(tokenAddress, ERC20_ABI, wallet.provider);
+        const [decimals, symbol] = await Promise.all([token.decimals(), token.symbol()]);
         if (!cancelled) setMetadata({ decimals: Number(decimals), symbol });
       } catch (error) {
         if (!cancelled) setStatus(`Could not read output-token metadata: ${readableError(error)}`);
@@ -71,10 +81,10 @@ export default function OutputBalance({ wallet }) {
     return () => {
       cancelled = true;
     };
-  }, [wallet, storageKey]);
+  }, [wallet, storageKey, tokenAddress, refreshKey]);
 
   async function readConfidentialBalance() {
-    const shieldedToken = await getContract(ADDRESSES.shieldedTokenOut, SHIELDED_TOKEN_ABI, wallet.provider);
+    const shieldedToken = await getContract(shieldedTokenAddress, SHIELDED_TOKEN_ABI, wallet.provider);
     const balanceHandle = await shieldedToken.confidentialBalanceOf(wallet.address);
     if (balanceHandle.toLowerCase() === ZERO_HANDLE) return 0n;
     const { value } = await wallet.handleClient.decrypt(balanceHandle);
@@ -121,9 +131,9 @@ export default function OutputBalance({ wallet }) {
     if (recipient.toLowerCase() !== wallet.address.toLowerCase()) {
       throw new Error('This pending claim belongs to a different wallet.');
     }
-    setStatus('Preparing your public claim…');
+    setStatus(`Preparing your public ${assetName} claim…`);
     const { decryptionProof } = await wallet.handleClient.publicDecrypt(requestId);
-    setStatus('Sending USDC to your wallet…');
+    setStatus(`Sending ${assetName} to your wallet…`);
     await (await shieldedToken.finalizeUnwrap(requestId, decryptionProof)).wait();
     clearPendingRequest();
     setWithdrawAmount('');
@@ -135,7 +145,7 @@ export default function OutputBalance({ wallet }) {
       // again once the gateway catches up.
       setBalance(null);
     }
-    setStatus('USDC claimed to your wallet. This claim amount is public on-chain.');
+    setStatus(`${assetName} claimed to your wallet. This claim amount is public on-chain.`);
   }
 
   async function handleRevealBalance() {
@@ -159,17 +169,17 @@ export default function OutputBalance({ wallet }) {
       const amount = withdrawAmount.trim()
         ? parsePositiveAmount(withdrawAmount, metadata.decimals)
         : available;
-      if (amount <= 0n) throw new Error('There is no private output available to claim.');
+      if (amount <= 0n) throw new Error(`There is no private ${assetName} available to claim.`);
       if (amount > available) throw new Error('Claim amount exceeds your private balance.');
 
-      const shieldedToken = await getContract(ADDRESSES.shieldedTokenOut, SHIELDED_TOKEN_ABI, wallet.signer);
+      const shieldedToken = await getContract(shieldedTokenAddress, SHIELDED_TOKEN_ABI, wallet.signer);
       setStatus('Preparing your claim…');
       const { handle, handleProof } = await wallet.handleClient.encryptInput(
         amount,
         'uint256',
-        ADDRESSES.shieldedTokenOut,
+        shieldedTokenAddress,
       );
-      setStatus('Requesting USDC to your wallet…');
+      setStatus(`Requesting ${assetName} to your wallet…`);
       const receipt = await (await shieldedToken['unwrap(address,address,bytes32,bytes)'](
         wallet.address,
         wallet.address,
@@ -194,7 +204,7 @@ export default function OutputBalance({ wallet }) {
     if (!pendingRequestId) return;
     setBusyAction('finalize');
     try {
-      const shieldedToken = await getContract(ADDRESSES.shieldedTokenOut, SHIELDED_TOKEN_ABI, wallet.signer);
+      const shieldedToken = await getContract(shieldedTokenAddress, SHIELDED_TOKEN_ABI, wallet.signer);
       await finalizeWithdrawal(pendingRequestId, shieldedToken);
     } catch (error) {
       setStatus(`Claim could not yet be finalized: ${readableError(error)}`);
@@ -227,9 +237,9 @@ export default function OutputBalance({ wallet }) {
         <details className="partial-claim">
           <summary>Claim a different amount</summary>
           <div className="field">
-            <label htmlFor="withdraw-output">Amount ({metadata.symbol})</label>
+            <label htmlFor={withdrawInputId}>Amount ({metadata.symbol})</label>
             <input
-              id="withdraw-output"
+              id={withdrawInputId}
               inputMode="decimal"
               value={withdrawAmount}
               onChange={(event) => setWithdrawAmount(event.target.value)}

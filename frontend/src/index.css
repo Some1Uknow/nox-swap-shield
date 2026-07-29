@@ -504,6 +504,10 @@ button.secondary:hover:not(:disabled) {
   border-bottom: 1px solid var(--line);
 }
 
+.claim-drawer + .claim-drawer {
+  margin-top: -1px;
+}
+
 .claim-drawer summary,
 .partial-claim summary {
   display: flex;
@@ -533,6 +537,13 @@ button.secondary:hover:not(:disabled) {
 
 .claim-panel {
   padding: 2px 0 17px;
+}
+
+.claim-context {
+  margin: -1px 0 13px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .claim-panel .top-gap-sm {
@@ -797,6 +808,16 @@ button.secondary:hover:not(:disabled) {
 .badge.shielded {
   background: var(--violet-pale);
   color: #5143ad;
+}
+
+.badge.expired {
+  background: #fff0e8;
+  color: #9d3d13;
+}
+
+.order-warning {
+  max-width: 330px;
+  color: #9d3d13;
 }
 
 .helper-text {

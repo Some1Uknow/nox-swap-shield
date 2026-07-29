@@ -111,10 +111,25 @@ export default function App() {
               </div>
               <Suspense fallback={<div className="panel"><p className="helper-text">Loading swap…</p></div>}>
                 <OrderForm wallet={wallet} onOrderSubmitted={() => setRefreshKey((value) => value + 1)} />
-                <OrderList wallet={wallet} refreshKey={refreshKey} />
+                <OrderList
+                  wallet={wallet}
+                  refreshKey={refreshKey}
+                  onOrderCancelled={() => setRefreshKey((value) => value + 1)}
+                />
+                <details className="claim-drawer">
+                  <summary><span>Private WETH</span><span>Refund or claim</span></summary>
+                  <p className="claim-context">Cancelled or expired swaps return here. Revealing is private; claiming WETH to your wallet is public.</p>
+                  <OutputBalance
+                    wallet={wallet}
+                    tokenAddress={import.meta.env.VITE_TOKEN_IN_ADDRESS}
+                    shieldedTokenAddress={import.meta.env.VITE_SHIELDED_TOKEN_IN_ADDRESS}
+                    refreshKey={refreshKey}
+                  />
+                </details>
                 <details className="claim-drawer">
                   <summary><span>Private USDC</span><span>Reveal or claim</span></summary>
-                  <OutputBalance wallet={wallet} />
+                  <p className="claim-context">USDC appears here only after a batch settles.</p>
+                  <OutputBalance wallet={wallet} refreshKey={refreshKey} />
                 </details>
               </Suspense>
             </>
