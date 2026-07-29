@@ -1,4 +1,11 @@
-import { ADDRESSES, CHAIN_ID, POOL_FEE, ROUTER_ABI, SHIELDED_TOKEN_ABI } from './contracts.js';
+import {
+  ADDRESSES,
+  CHAIN_ID,
+  POOL_FEE,
+  ROUTER_ABI,
+  SHIELDED_TOKEN_ABI,
+  UNISWAP_V3_QUOTER_V2,
+} from './contracts.js';
 
 const ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 let ethersModulePromise;
@@ -39,6 +46,7 @@ export async function verifyDeployment(provider) {
     requireCode(provider, ADDRESSES.shieldedTokenIn, 'Configured ShieldedTokenIn'),
     requireCode(provider, ADDRESSES.shieldedTokenOut, 'Configured ShieldedTokenOut'),
     requireCode(provider, ADDRESSES.router, 'Configured router'),
+    requireCode(provider, UNISWAP_V3_QUOTER_V2, 'Uniswap QuoterV2'),
   ]);
 
   const router = new Contract(ADDRESSES.router, ROUTER_ABI, provider);
