@@ -6,16 +6,29 @@ import { getContract } from '../lib/nox.js';
 const STATUS_LABELS = ['Unknown', 'Verifying funds', 'Waiting for batch', 'Batching privately', 'Swapped privately', 'Cancelled'];
 const MAX_VISIBLE_ORDERS = 50;
 
+function statusLabel(order, activeWalletCount, minBatchSize) {
+  if ((order.status === 1 || order.status === 2) && order.deadline <= order.now) {
+    return 'Expired — reclaim WETH';
+  }
+  if (order.status === 2) {
+    const missingWallets = Math.max(0, minBatchSize - activeWalletCount);
+    return missingWallets === 1 ? 'Waiting for 1 wallet' : `Waiting for ${missingWallets} wallets`;
+  }
+  return STATUS_LABELS[order.status] ?? 'Unknown';
+}
+
 function readableError(error) {
   return error?.shortMessage || error?.reason || error?.message || 'Unable to load orders.';
 }
 
-export default function OrderList({ wallet, refreshKey }) {
+export default function OrderList({ wallet, refreshKey, onOrderCancelled }) {
   const [orders, setOrders] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [metadata, setMetadata] = useState({ decimals: 18, symbol: 'output token' });
   const [status, setStatus] = useState('');
   const [cancellingId, setCancellingId] = useState(null);
+  const [batchRequirement, setBatchRequirement] = useState(3);
+  const [activeWalletCount, setActiveWalletCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,11 +39,14 @@ export default function OrderList({ wallet, refreshKey }) {
           getContract(ADDRESSES.router, ROUTER_ABI, wallet.provider),
           getContract(ADDRESSES.tokenOut, ERC20_ABI, wallet.provider),
         ]);
-        const [countValue, decimals, symbol] = await Promise.all([
+        const [countValue, decimals, symbol, minBatchSize, latestBlock] = await Promise.all([
           router.nextOrderId(),
           outputToken.decimals(),
           outputToken.symbol(),
+          router.minBatchSize(),
+          wallet.provider.getBlock('latest'),
         ]);
+        if (!latestBlock) throw new Error('Could not read the latest Sepolia block.');
         const count = Number(countValue);
         if (!Number.isSafeInteger(count)) throw new Error("Order count exceeds this client's safe pagination range.");
         const firstId = Math.max(0, count - MAX_VISIBLE_ORDERS);
@@ -45,11 +61,18 @@ export default function OrderList({ wallet, refreshKey }) {
               deadline: Number(order.deadline),
               batchId: order.batchId.toString(),
               status: Number(order.status),
+              now: Number(latestBlock.timestamp),
             };
           }),
         );
         if (!cancelled) {
           setMetadata({ decimals: Number(decimals), symbol });
+          setBatchRequirement(Number(minBatchSize));
+          setActiveWalletCount(new Set(
+            loaded
+              .filter((order) => order.status === 2 && order.deadline > Number(latestBlock.timestamp))
+              .map((order) => order.trader.toLowerCase()),
+          ).size);
           setOrders(loaded.reverse());
           setStatus(count > MAX_VISIBLE_ORDERS ? `Showing the newest ${MAX_VISIBLE_ORDERS} of ${count} orders.` : '');
           setLoaded(true);
@@ -75,7 +98,8 @@ export default function OrderList({ wallet, refreshKey }) {
       setOrders((current) => current.map((order) => (
         order.id === orderId ? { ...order, status: 5 } : order
       )));
-      setStatus(`Swap #${orderId} cancelled. Your private input is available again.`);
+      setStatus(`Swap #${orderId} returned to Private WETH. Reveal it there, then claim it to your wallet if you want.`);
+      onOrderCancelled?.();
     } catch (error) {
       setStatus(`Cancellation failed: ${readableError(error)}`);
     } finally {
@@ -98,24 +122,30 @@ export default function OrderList({ wallet, refreshKey }) {
 
       {ownOrders.map((order) => {
         const isCancellable = order.status === 1 || order.status === 2;
+        const isExpired = isCancellable && order.deadline <= order.now;
+        const waitingFor = Math.max(0, batchRequirement - activeWalletCount);
         return (
           <div className="order-card" key={order.id}>
             <div>
               <div className="order-meta">Swap #{order.id}</div>
               <div className="order-amount hidden-value">Encrypted WETH amount</div>
               <div className="order-meta">Min. {formatUnits(order.minOut, metadata.decimals)} {metadata.symbol}</div>
+              {isExpired && <div className="order-meta order-warning">No batch formed before the deadline. Return the private WETH below.</div>}
+              {!isExpired && order.status === 2 && waitingFor > 0 && (
+                <div className="order-meta">Needs {waitingFor} more distinct wallet{waitingFor === 1 ? '' : 's'} before the deadline.</div>
+              )}
             </div>
 
             <div className="order-actions">
-              <span className="badge shielded">
-                {STATUS_LABELS[order.status] ?? 'unknown'}
+              <span className={`badge ${isExpired ? 'expired' : 'shielded'}`}>
+                {statusLabel(order, activeWalletCount, batchRequirement)}
               </span>
               {isCancellable && (
                 <button className="secondary" disabled={cancellingId === order.id} onClick={() => handleCancel(order.id)}>
-                  {cancellingId === order.id ? 'Cancelling…' : 'Cancel'}
+                  {cancellingId === order.id ? 'Returning…' : isExpired ? 'Return WETH' : 'Cancel'}
                 </button>
               )}
-              {order.status >= 3 && <span className="order-meta">Batch #{order.batchId}</span>}
+              {(order.status === 3 || order.status === 4) && <span className="order-meta">Batch #{order.batchId}</span>}
             </div>
           </div>
         );
