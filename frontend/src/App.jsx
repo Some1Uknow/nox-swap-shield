@@ -9,14 +9,16 @@ const OutputBalance = lazy(() => import('./components/OutputBalance.jsx'));
 function ProductNarrative() {
   return (
     <section className="hero" aria-labelledby="product-title">
-      <p className="eyebrow"><span className="eyebrow-dot" /> Private WETH → USDC</p>
-      <h1 id="product-title">Private sizing,<br /><em>native DeFi.</em></h1>
+      <p className="eyebrow">Confidential execution · Sepolia</p>
+      <h1 id="product-title">Trade with your<br /><em>size hidden.</em></h1>
       <p className="subtitle">
-        Encrypt your WETH order size and receive private USDC after a Uniswap batch settles.
+        NoxSwap encrypts your WETH order size before it enters a shared Uniswap settlement batch.
       </p>
-      <p className="privacy-brief">
-        Encrypted order sizing · Three-wallet batch execution · Wallet-native on Sepolia
-      </p>
+      <dl className="protocol-facts">
+        <div><dt>Order size</dt><dd>Encrypted locally</dd></div>
+        <div><dt>Settlement</dt><dd>Shared AMM batch</dd></div>
+        <div><dt>Network</dt><dd>Ethereum Sepolia</dd></div>
+      </dl>
     </section>
   );
 }
@@ -25,29 +27,29 @@ function SwapPreview({ onConnect, connectError }) {
   return (
     <div className="swap-card panel swap-preview">
       <div className="swap-card-heading">
-        <p className="swap-title">Swap</p>
-        <span className="privacy-chip">Private</span>
+        <div>
+          <p className="swap-title">Private swap</p>
+          <p className="swap-context">WETH to USDC</p>
+        </div>
+        <span className="execution-label">Encrypted</span>
       </div>
       <div className="token-field">
-        <div className="token-field-label"><span>You pay</span><span>Private</span></div>
+        <div className="token-field-label"><span>You pay</span><span>Hidden amount</span></div>
         <div className="token-control">
           <span className="preview-amount">0</span>
-          <span className="token-chip"><TokenLogo token="WETH" size={28} />WETH<b aria-hidden="true">⌄</b></span>
+          <span className="token-chip"><TokenLogo token="WETH" size={32} />WETH</span>
         </div>
       </div>
       <div className="swap-arrow" aria-hidden="true">↓</div>
       <div className="token-field">
-        <div className="token-field-label"><span>You receive</span><span>Protected</span></div>
+        <div className="token-field-label"><span>You receive</span><span>Minimum output</span></div>
         <div className="token-control">
           <span className="preview-amount">0</span>
-          <span className="token-chip"><TokenLogo token="USDC" size={28} />USDC<b aria-hidden="true">⌄</b></span>
+          <span className="token-chip"><TokenLogo token="USDC" size={32} />USDC</span>
         </div>
       </div>
       <button className="primary swap-cta" onClick={onConnect}>Connect wallet</button>
-      <div className="swap-card-footer">
-        <span>Sepolia</span>
-        <span>Batch execution</span>
-      </div>
+      <p className="swap-card-footer">Encrypted locally · Settled in a shared batch</p>
       {connectError && <p className="helper-text error-text" role="alert">{connectError}</p>}
     </div>
   );
@@ -86,11 +88,11 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="site-header">
-        <a className="brand" href="/" aria-label="Swap Shield home">
-          <span className="brand-mark" aria-hidden="true">S</span>
-          <span>Swap Shield</span>
+        <a className="brand" href="/" aria-label="NoxSwap home">
+          <img className="brand-mark" src="/noxswap-mark.svg" width="34" height="34" alt="" />
+          <span className="brand-name"><strong>NoxSwap</strong><small>Private exchange</small></span>
         </a>
-        <span className="network-pill"><i aria-hidden="true" /> Sepolia beta</span>
+        <span className="network-context"><i aria-hidden="true" /> Sepolia testnet</span>
       </header>
 
       <main className="landing-grid">
@@ -138,8 +140,8 @@ export default function App() {
       </main>
 
       <footer className="site-footer">
-        <span>Built with iExec Nox</span>
-        <span>Encrypted trade sizing · Batched AMM settlement</span>
+        <span>NoxSwap</span>
+        <span>Built with iExec Nox · Private order sizing, shared settlement</span>
       </footer>
     </div>
   );

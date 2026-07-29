@@ -1,5 +1,5 @@
 {
-  "name": "nox-swap-shield",
+  "name": "noxswap",
   "version": "0.1.0",
   "private": true,
   "description": "Confidential swap-size shielding for Uniswap-style AMMs, built on iExec Nox for the WTF Hackathon Summer Edition.",

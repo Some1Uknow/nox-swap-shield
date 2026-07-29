@@ -135,7 +135,7 @@ export default function OrderList({ wallet, refreshKey, onOrderCancelled }) {
             </div>
 
             <div className="order-actions">
-              <span className={`badge ${isExpired ? 'expired' : 'shielded'}`}>
+              <span className={`order-state ${isExpired ? 'expired' : ''}`}>
                 {statusLabel(order, activeWalletCount, batchRequirement)}
               </span>
               {isCancellable && (

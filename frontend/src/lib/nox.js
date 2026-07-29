@@ -89,7 +89,7 @@ export async function verifyDeployment(provider) {
     maxBatchSize > 12n ||
     addressMatches(executor, ZeroAddress)
   ) {
-    throw new Error('The public frontend configuration does not match the deployed Swap Shield stack. Rebuild with the current Sepolia addresses.');
+    throw new Error('The public frontend configuration does not match the deployed NoxSwap stack. Rebuild with the current Sepolia addresses.');
   }
 }
 

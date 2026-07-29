@@ -245,14 +245,17 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
   return (
     <div className="swap-card panel">
       <div className="swap-card-heading">
-        <p className="swap-title">Swap</p>
-        <span className="privacy-chip">Private</span>
+        <div>
+          <p className="swap-title">Private swap</p>
+          <p className="swap-context">WETH to USDC</p>
+        </div>
+        <span className="execution-label">Encrypted</span>
       </div>
 
       <div className="token-field">
         <div className="token-field-label">
           <label htmlFor="sell-amount">You pay</label>
-          <span>Private</span>
+          <span>Hidden amount</span>
         </div>
         <div className="token-control">
           <input
@@ -263,7 +266,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
             onChange={(event) => setOrderAmount(event.target.value)}
             disabled={!metadataReady || busyAction !== null}
           />
-          <span className="token-chip token-in"><TokenLogo token="WETH" size={26} />{inputMetadata.symbol}<b aria-hidden="true">⌄</b></span>
+          <span className="token-chip token-in"><TokenLogo token="WETH" size={32} />{inputMetadata.symbol}</span>
         </div>
       </div>
 
@@ -272,7 +275,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
       <div className="token-field">
         <div className="token-field-label">
           <label htmlFor="min-out">You receive</label>
-          <span>Minimum</span>
+          <span>Minimum output</span>
         </div>
         <div className="token-control">
           <input
@@ -283,7 +286,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
             onChange={(event) => setMinOut(event.target.value)}
             disabled={!metadataReady || busyAction !== null}
           />
-          <span className="token-chip token-out"><TokenLogo token="USDC" size={26} />{outputMetadata.symbol}<b aria-hidden="true">⌄</b></span>
+          <span className="token-chip token-out"><TokenLogo token="USDC" size={32} />{outputMetadata.symbol}</span>
         </div>
       </div>
 
@@ -307,10 +310,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
       <button className="primary swap-cta" onClick={handleSubmitOrder} disabled={!metadataReady || !quote || busyAction !== null}>
         {busyAction === 'submit' ? 'Swapping privately…' : 'Swap privately'}
       </button>
-      <div className="swap-card-footer">
-        <span>Private relay</span>
-        <span>Batch execution</span>
-      </div>
+      <p className="swap-card-footer">Encrypted locally · Settled in a shared batch</p>
 
       <details className="funding-details">
         <summary>Deposit {inputMetadata.symbol}</summary>
