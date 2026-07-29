@@ -86,8 +86,10 @@ npm run release:preflight
 ## 3. Deploy the public frontend on Vercel
 
 Set the seven `VITE_` values as Vercel **Production** environment variables.
-They are public build-time configuration only. Then create the first production
-deployment:
+They are public build-time configuration only. If you want a pull-request
+preview to build, add the same seven values to Vercel **Preview** scoped to that
+Git branch as well; Preview deployments do not inherit Production values. Then
+create the first production deployment:
 
 ```bash
 vercel --prod
