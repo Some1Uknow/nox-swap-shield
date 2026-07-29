@@ -9,11 +9,17 @@ const OutputBalance = lazy(() => import('./components/OutputBalance.jsx'));
 function ProductNarrative() {
   return (
     <section className="hero" aria-labelledby="product-title">
-      <p className="eyebrow">Confidential execution · Sepolia</p>
       <h1 id="product-title">Trade with your <em>size hidden.</em></h1>
       <p className="subtitle">
         NoxSwap encrypts your WETH order size before it enters a shared Uniswap settlement batch.
       </p>
+      <a className="powered-by" href="https://www.iex.ec/" target="_blank" rel="noreferrer">
+        <span>Powered by</span>
+        <img
+          src="https://cdn.prod.website-files.com/6646148828eddb19c172bf2a/68bae2d73cecfcbf68e30a41_Logo-iExec-YB_LARGE.png"
+          alt="iExec"
+        />
+      </a>
       <dl className="protocol-facts">
         <div><dt>Order size</dt><dd>Encrypted locally</dd></div>
         <div><dt>Settlement</dt><dd>Shared AMM batch</dd></div>
