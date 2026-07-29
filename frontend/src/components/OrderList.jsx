@@ -110,14 +110,28 @@ export default function OrderList({ wallet, refreshKey, onOrderCancelled }) {
 
   if (loaded && ownOrders.length === 0 && !status) return null;
 
+  if (!loaded) {
+    return (
+      <div className="panel activity-panel order-list-loading" aria-busy="true" role="status">
+        <div className="panel-heading-row">
+          <p className="panel-title">Your swaps</p>
+        </div>
+        <div className="inline-loader">
+          <span className="loading-spinner" aria-hidden="true" />
+          <span>Syncing swap activity</span>
+        </div>
+        {status && <p className="helper-text status-message error-text">{status}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="panel activity-panel">
       <div className="panel-heading-row">
         <p className="panel-title">Your swaps</p>
         <span className="refresh-indicator"><i aria-hidden="true" /> Live</span>
       </div>
-      {!loaded && <p className="empty-state">Loading…</p>}
-      {loaded && ownOrders.length === 0 && <p className="empty-state">No swaps yet.</p>}
+      {ownOrders.length === 0 && <p className="empty-state">No swaps yet.</p>}
 
       {ownOrders.map((order) => {
         const isCancellable = order.status === 1 || order.status === 2;

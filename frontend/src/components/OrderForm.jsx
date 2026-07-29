@@ -243,7 +243,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
   const metadataReady = inputMetadata.decimals !== null && outputMetadata.decimals !== null;
 
   return (
-    <div className="swap-card panel">
+    <div className="swap-card panel" aria-busy={!metadataReady}>
       <div className="swap-card-heading">
         <div>
           <p className="swap-title">Private swap</p>
@@ -252,90 +252,102 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
         <span className="execution-label">Encrypted</span>
       </div>
 
-      <div className="token-field">
-        <div className="token-field-label">
-          <label htmlFor="sell-amount">You pay</label>
-          <span>Hidden amount</span>
-        </div>
-        <div className="token-control">
-          <input
-            id="sell-amount"
-            inputMode="decimal"
-            placeholder="0.0"
-            value={orderAmount}
-            onChange={(event) => setOrderAmount(event.target.value)}
-            disabled={!metadataReady || busyAction !== null}
-          />
-          <span className="token-chip token-in"><TokenLogo token="WETH" size={32} />{inputMetadata.symbol}</span>
-        </div>
-      </div>
-
-      <div className="swap-arrow" aria-hidden="true">↓</div>
-
-      <div className="token-field">
-        <div className="token-field-label">
-          <label htmlFor="min-out">You receive</label>
-          <span>Minimum output</span>
-        </div>
-        <div className="token-control">
-          <input
-            id="min-out"
-            inputMode="decimal"
-            placeholder="0.0"
-            value={minOut}
-            onChange={(event) => setMinOut(event.target.value)}
-            disabled={!metadataReady || busyAction !== null}
-          />
-          <span className="token-chip token-out"><TokenLogo token="USDC" size={32} />{outputMetadata.symbol}</span>
-        </div>
-      </div>
-
-      <div className="quote-row" aria-live="polite">
-        <span className={quote ? 'quote-live' : 'quote-status'}>{quoteStatus}</span>
-        {quote && (
-          <strong>{formatUnits(quote.amountOut, outputMetadata.decimals)} {outputMetadata.symbol}</strong>
-        )}
-        <label className="slippage-control">
-          Slippage
-          <select value={slippageBps} onChange={(event) => setSlippageBps(Number(event.target.value))} disabled={busyAction !== null}>
-            <option value={50}>0.5%</option>
-            <option value={100}>1%</option>
-            <option value={200}>2%</option>
-          </select>
-        </label>
-      </div>
-      <p className="min-out-note">
-        Live Uniswap quote · Three-wallet batch settlement
-      </p>
-      <button className="primary swap-cta" onClick={handleSubmitOrder} disabled={!metadataReady || !quote || busyAction !== null}>
-        {busyAction === 'submit' ? 'Swapping privately…' : 'Swap privately'}
-      </button>
-      <p className="swap-card-footer">Encrypted locally · Settled in a shared batch</p>
-
-      <details className="funding-details">
-        <summary>Deposit {inputMetadata.symbol}</summary>
-        <div className="funding-content">
-          <p className="helper-text">
-            Add WETH once to trade privately. Missing WETH is wrapped from your Sepolia ETH automatically.
-          </p>
-          <div className="field">
-            <label htmlFor="fund-amount">Amount ({inputMetadata.symbol})</label>
-            <input
-              id="fund-amount"
-              inputMode="decimal"
-              placeholder="0.0"
-              value={fundAmount}
-              onChange={(event) => setFundAmount(event.target.value)}
-              disabled={!metadataReady || busyAction !== null}
-            />
+      {!metadataReady ? (
+        <div className="swap-form-loading" role="status" aria-live="polite">
+          <span className="loading-spinner" aria-hidden="true" />
+          <div>
+            <p>Preparing your swap</p>
+            <span>{status || 'Reading wallet and token details'}</span>
           </div>
-          <button className="secondary" onClick={handleFund} disabled={!metadataReady || busyAction !== null}>
-            {busyAction === 'fund' ? 'Depositing…' : `Deposit ${inputMetadata.symbol}`}
-          </button>
         </div>
-      </details>
+      ) : (
+        <>
+          <div className="token-field">
+            <div className="token-field-label">
+              <label htmlFor="sell-amount">You pay</label>
+              <span>Hidden amount</span>
+            </div>
+            <div className="token-control">
+              <input
+                id="sell-amount"
+                inputMode="decimal"
+                placeholder="0.0"
+                value={orderAmount}
+                onChange={(event) => setOrderAmount(event.target.value)}
+                disabled={busyAction !== null}
+              />
+              <span className="token-chip token-in"><TokenLogo token="WETH" size={32} />{inputMetadata.symbol}</span>
+            </div>
+          </div>
 
-      {status && <p className="helper-text status-message" role="status">{status}</p>}
+          <div className="swap-arrow" aria-hidden="true">↓</div>
+
+          <div className="token-field">
+            <div className="token-field-label">
+              <label htmlFor="min-out">You receive</label>
+              <span>Minimum output</span>
+            </div>
+            <div className="token-control">
+              <input
+                id="min-out"
+                inputMode="decimal"
+                placeholder="0.0"
+                value={minOut}
+                onChange={(event) => setMinOut(event.target.value)}
+                disabled={busyAction !== null}
+              />
+              <span className="token-chip token-out"><TokenLogo token="USDC" size={32} />{outputMetadata.symbol}</span>
+            </div>
+          </div>
+
+          <div className="quote-row" aria-live="polite">
+            <span className={quote ? 'quote-live' : 'quote-status'}>{quoteStatus}</span>
+            {quote && (
+              <strong>{formatUnits(quote.amountOut, outputMetadata.decimals)} {outputMetadata.symbol}</strong>
+            )}
+            <label className="slippage-control">
+              Slippage
+              <select value={slippageBps} onChange={(event) => setSlippageBps(Number(event.target.value))} disabled={busyAction !== null}>
+                <option value={50}>0.5%</option>
+                <option value={100}>1%</option>
+                <option value={200}>2%</option>
+              </select>
+            </label>
+          </div>
+          <p className="min-out-note">
+            Live Uniswap quote · Three-wallet batch settlement
+          </p>
+          <button className="primary swap-cta" onClick={handleSubmitOrder} disabled={!quote || busyAction !== null}>
+            {busyAction === 'submit' ? 'Swapping privately…' : 'Swap privately'}
+          </button>
+          <p className="swap-card-footer">Encrypted locally · Settled in a shared batch</p>
+
+          <details className="funding-details">
+            <summary>Deposit {inputMetadata.symbol}</summary>
+            <div className="funding-content">
+              <p className="helper-text">
+                Add WETH once to trade privately. Missing WETH is wrapped from your Sepolia ETH automatically.
+              </p>
+              <div className="field">
+                <label htmlFor="fund-amount">Amount ({inputMetadata.symbol})</label>
+                <input
+                  id="fund-amount"
+                  inputMode="decimal"
+                  placeholder="0.0"
+                  value={fundAmount}
+                  onChange={(event) => setFundAmount(event.target.value)}
+                  disabled={busyAction !== null}
+                />
+              </div>
+              <button className="secondary" onClick={handleFund} disabled={busyAction !== null}>
+                {busyAction === 'fund' ? 'Depositing…' : `Deposit ${inputMetadata.symbol}`}
+              </button>
+            </div>
+          </details>
+        </>
+      )}
+
+      {metadataReady && status && <p className="helper-text status-message" role="status">{status}</p>}
     </div>
   );
 }

@@ -10,7 +10,7 @@ function ProductNarrative() {
   return (
     <section className="hero" aria-labelledby="product-title">
       <p className="eyebrow">Confidential execution · Sepolia</p>
-      <h1 id="product-title">Trade with your<br /><em>size hidden.</em></h1>
+      <h1 id="product-title">Trade with your <em>size hidden.</em></h1>
       <p className="subtitle">
         NoxSwap encrypts your WETH order size before it enters a shared Uniswap settlement batch.
       </p>
@@ -23,7 +23,37 @@ function ProductNarrative() {
   );
 }
 
-function SwapPreview({ onConnect, connectError }) {
+function LoadingIndicator({ label }) {
+  return (
+    <span className="loading-indicator">
+      <span className="loading-spinner" aria-hidden="true" />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function SwapLoadingPanel() {
+  return (
+    <div className="swap-card panel swap-loading" aria-busy="true" aria-live="polite">
+      <div className="swap-card-heading">
+        <div>
+          <p className="swap-title">Private swap</p>
+          <p className="swap-context">WETH to USDC</p>
+        </div>
+      </div>
+      <div className="swap-loading-content" role="status">
+        <span className="loading-spinner" aria-hidden="true" />
+        <div>
+          <p>Preparing your private swap</p>
+          <span>Loading wallet and token details</span>
+        </div>
+      </div>
+      <div className="loading-lines" aria-hidden="true"><i /><i /><i /></div>
+    </div>
+  );
+}
+
+function SwapPreview({ onConnect, connectError, isConnecting }) {
   return (
     <div className="swap-card panel swap-preview">
       <div className="swap-card-heading">
@@ -48,8 +78,11 @@ function SwapPreview({ onConnect, connectError }) {
           <span className="token-chip"><TokenLogo token="USDC" size={32} />USDC</span>
         </div>
       </div>
-      <button className="primary swap-cta" onClick={onConnect}>Connect wallet</button>
+      <button className="primary swap-cta" onClick={onConnect} disabled={isConnecting} aria-busy={isConnecting}>
+        {isConnecting ? <LoadingIndicator label="Connecting wallet" /> : 'Connect wallet'}
+      </button>
       <p className="swap-card-footer">Encrypted locally · Settled in a shared batch</p>
+      {isConnecting && <p className="connect-progress" role="status">Confirm the connection in your wallet.</p>}
       {connectError && <p className="helper-text error-text" role="alert">{connectError}</p>}
     </div>
   );
@@ -58,6 +91,7 @@ function SwapPreview({ onConnect, connectError }) {
 export default function App() {
   const [wallet, setWallet] = useState(null);
   const [connectError, setConnectError] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const configIssue = useMemo(() => configurationError(), []);
 
@@ -78,10 +112,13 @@ export default function App() {
 
   async function handleConnect() {
     setConnectError('');
+    setIsConnecting(true);
     try {
       setWallet(await connectWallet());
     } catch (error) {
       setConnectError(error instanceof Error ? error.message : 'Unable to connect wallet.');
+    } finally {
+      setIsConnecting(false);
     }
   }
 
@@ -104,14 +141,14 @@ export default function App() {
               <p className="helper-text">{configIssue}</p>
             </div>
           ) : !wallet ? (
-            <SwapPreview onConnect={handleConnect} connectError={connectError} />
+            <SwapPreview onConnect={handleConnect} connectError={connectError} isConnecting={isConnecting} />
           ) : (
             <>
               <div className="connected-row">
                 <span className="wallet-status"><i aria-hidden="true" /> Connected</span>
                 <code>{wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}</code>
               </div>
-              <Suspense fallback={<div className="panel"><p className="helper-text">Loading swap…</p></div>}>
+              <Suspense fallback={<SwapLoadingPanel />}>
                 <OrderForm wallet={wallet} onOrderSubmitted={() => setRefreshKey((value) => value + 1)} />
                 <OrderList
                   wallet={wallet}
