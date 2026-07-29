@@ -229,17 +229,14 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
   return (
     <div className="swap-card panel">
       <div className="swap-card-heading">
-        <div>
-          <p className="panel-title">Private swap</p>
-          <p className="route-title">{inputMetadata.symbol} <span>↓</span> {outputMetadata.symbol}</p>
-        </div>
-        <span className="privacy-chip">Trade size encrypted</span>
+        <p className="swap-title">Swap</p>
+        <span className="privacy-chip">Private</span>
       </div>
 
       <div className="token-field">
         <div className="token-field-label">
-          <label htmlFor="sell-amount">You swap</label>
-          <span>Encrypted when submitted</span>
+          <label htmlFor="sell-amount">You pay</label>
+          <span>Private</span>
         </div>
         <div className="token-control">
           <input
@@ -258,8 +255,8 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
 
       <div className="token-field">
         <div className="token-field-label">
-          <label htmlFor="min-out">Minimum you receive</label>
-          <span>Public protection</span>
+          <label htmlFor="min-out">You receive</label>
+          <span>Minimum</span>
         </div>
         <div className="token-control">
           <input
@@ -289,24 +286,24 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
         </label>
       </div>
       <p className="min-out-note">
-        The live quote is indicative. Your minimum is set from the selected slippage and remains public to protect the delayed batch settlement.
+        Minimum is public. Quote is live; settlement is batched.
       </p>
       <button className="primary swap-cta" onClick={handleSubmitOrder} disabled={!metadataReady || !quote || busyAction !== null}>
-        {busyAction === 'submit' ? 'Placing private swap…' : 'Place private swap'}
+        {busyAction === 'submit' ? 'Swapping privately…' : 'Swap privately'}
       </button>
       <div className="swap-card-footer">
-        <span>Private relay settlement</span>
-        <span>Batch of 3+ addresses</span>
+        <span>Private relay</span>
+        <span>3-wallet batch</span>
       </div>
 
       <details className="funding-details">
-        <summary>First swap? Add {inputMetadata.symbol} to your private balance</summary>
+        <summary>Deposit {inputMetadata.symbol}</summary>
         <div className="funding-content">
           <p className="helper-text">
-            This one-time funding transaction is public. Funding separately from your order makes the relationship harder to infer.
+            Required before your first private swap. Deposit is public.
           </p>
           <div className="field">
-            <label htmlFor="fund-amount">Public funding amount ({inputMetadata.symbol})</label>
+            <label htmlFor="fund-amount">Amount ({inputMetadata.symbol})</label>
             <input
               id="fund-amount"
               inputMode="decimal"
@@ -317,7 +314,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
             />
           </div>
           <button className="secondary" onClick={handleFund} disabled={!metadataReady || busyAction !== null}>
-            {busyAction === 'fund' ? 'Adding funds…' : `Add private ${inputMetadata.symbol}`}
+            {busyAction === 'fund' ? 'Depositing…' : `Deposit ${inputMetadata.symbol}`}
           </button>
         </div>
       </details>
