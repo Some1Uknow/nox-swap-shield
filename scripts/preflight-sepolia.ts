@@ -161,6 +161,11 @@ async function main() {
   const executor = privateKeyToAccount(requiredPrivateKey('SETTLEMENT_EXECUTOR_PRIVATE_KEY'));
   const relayAuth = privateKeyToAccount(requiredPrivateKey('PRIVATE_RELAY_AUTH_PRIVATE_KEY'));
   requiredHttpsUrl('PRIVATE_RELAY_URL');
+  const privateRelayMode = process.env.PRIVATE_RELAY_MODE ?? 'signed-private-transaction';
+  assert(
+    privateRelayMode === 'signed-private-transaction' || privateRelayMode === 'flashbots-protect',
+    'PRIVATE_RELAY_MODE must be signed-private-transaction or flashbots-protect.',
+  );
 
   assert(!sameAddress(tokenIn, tokenOut), 'TOKEN_IN_ADDRESS and TOKEN_OUT_ADDRESS must differ.');
   assert(!sameAddress(shieldedTokenIn, shieldedTokenOut), 'SHIELDED_TOKEN_IN_ADDRESS and SHIELDED_TOKEN_OUT_ADDRESS must differ.');

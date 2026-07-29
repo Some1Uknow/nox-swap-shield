@@ -20,6 +20,7 @@ import { createViemHandleClient } from '@iexec-nox/handle';
 const ROUTER_ADDRESS = process.env.SWAP_SHIELD_ROUTER_ADDRESS as Address;
 const RPC_URL = process.env.SEPOLIA_RPC_URL;
 const PRIVATE_RELAY_URL = process.env.PRIVATE_RELAY_URL;
+const PRIVATE_RELAY_MODE = process.env.PRIVATE_RELAY_MODE ?? 'signed-private-transaction';
 const EXECUTOR_PRIVATE_KEY = process.env.SETTLEMENT_EXECUTOR_PRIVATE_KEY as Hex;
 const PRIVATE_RELAY_AUTH_PRIVATE_KEY = process.env.PRIVATE_RELAY_AUTH_PRIVATE_KEY as Hex;
 const BATCH_WINDOW_MS = Number(process.env.BATCH_WINDOW_MS ?? 20_000);
@@ -110,6 +111,9 @@ function requiredConfiguration() {
   }
   requireHttpsUrl('SEPOLIA_RPC_URL', RPC_URL);
   requireHttpsUrl('PRIVATE_RELAY_URL', PRIVATE_RELAY_URL);
+  if (PRIVATE_RELAY_MODE !== 'signed-private-transaction' && PRIVATE_RELAY_MODE !== 'flashbots-protect') {
+    throw new Error('PRIVATE_RELAY_MODE must be signed-private-transaction or flashbots-protect');
+  }
   if (!Number.isFinite(BATCH_WINDOW_MS) || BATCH_WINDOW_MS < 5_000) {
     throw new Error('BATCH_WINDOW_MS must be at least 5000');
   }
@@ -135,7 +139,16 @@ async function sendPrivateTransaction(
   maxBlockNumber: bigint,
   relayAuthAccount: RelayAuthAccount,
 ): Promise<Hex> {
-  const requestBody = JSON.stringify({
+  const isFlashbotsProtect = PRIVATE_RELAY_MODE === 'flashbots-protect';
+  const requestBody = JSON.stringify(isFlashbotsProtect ? {
+    jsonrpc: '2.0',
+    id: 1,
+    // Flashbots Protect accepts a normal signed transaction through its
+    // private RPC. Unlike eth_sendPrivateTransaction, this endpoint does not
+    // need a separate authentication header on Sepolia.
+    method: 'eth_sendRawTransaction',
+    params: [signedTransaction],
+  } : {
     jsonrpc: '2.0',
     id: 1,
     method: 'eth_sendPrivateTransaction',
@@ -148,24 +161,31 @@ async function sendPrivateTransaction(
       preferences: { fast: false, privacy: { hints: [] } },
     }],
   });
-  // Flashbots-compatible relays authenticate the exact JSON-RPC body using an
-  // EIP-191 signature. Keep this auth key separate from the funded executor.
-  const signature = await relayAuthAccount.signMessage({
-    message: { raw: keccak256(stringToHex(requestBody)) },
-  });
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (!isFlashbotsProtect) {
+    // Flashbots-compatible relays authenticate the exact JSON-RPC body using
+    // an EIP-191 signature. Keep this auth key separate from the funded executor.
+    const signature = await relayAuthAccount.signMessage({
+      message: { raw: keccak256(stringToHex(requestBody)) },
+    });
+    headers['X-Flashbots-Signature'] = `${relayAuthAccount.address}:${signature}`;
+  }
   const response = await fetch(PRIVATE_RELAY_URL!, {
     method: 'POST',
     redirect: 'error',
     signal: AbortSignal.timeout(PRIVATE_TX_TIMEOUT_MS),
-    headers: {
-      'content-type': 'application/json',
-      'X-Flashbots-Signature': `${relayAuthAccount.address}:${signature}`,
-    },
+    headers,
     body: requestBody,
   });
-  if (!response.ok) throw new Error(`Private relay returned HTTP ${response.status}`);
+  const responseText = await response.text();
+  if (!response.ok) throw new Error(`Private relay returned HTTP ${response.status}: ${responseText.slice(0, 300)}`);
 
-  const payload = (await response.json()) as { result?: Hex; error?: { message?: string } };
+  let payload: { result?: Hex; error?: { message?: string } };
+  try {
+    payload = JSON.parse(responseText) as { result?: Hex; error?: { message?: string } };
+  } catch {
+    throw new Error('Private relay returned a non-JSON success response');
+  }
   if (payload.error || !payload.result || !isHex(payload.result, { strict: true }) || payload.result.length !== 66) {
     throw new Error(`Private relay rejected transaction: ${payload.error?.message ?? 'missing canonical transaction hash'}`);
   }
