@@ -8,6 +8,7 @@ import {
   ROUTER_ABI,
   SHIELDED_TOKEN_ABI,
   UNISWAP_V3_QUOTER_V2,
+  WETH_ABI,
 } from '../lib/contracts.js';
 import { getContract } from '../lib/nox.js';
 import TokenLogo from './TokenLogo.jsx';
@@ -132,25 +133,40 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
       ]);
       inputToken = input;
 
-      setStatus(`Approving ${formatUnits(amount, inputMetadata.decimals)} ${inputMetadata.symbol} for confidential funding…`);
+      const publicBalance = await inputToken.balanceOf(wallet.address);
+      if (publicBalance < amount) {
+        if (inputMetadata.symbol !== 'WETH') {
+          throw new Error(`You need ${formatUnits(amount - publicBalance, inputMetadata.decimals)} more ${inputMetadata.symbol} before depositing.`);
+        }
+        const missingAmount = amount - publicBalance;
+        const nativeBalance = await wallet.provider.getBalance(wallet.address);
+        if (nativeBalance <= missingAmount) {
+          throw new Error(`You need ${formatUnits(missingAmount, inputMetadata.decimals)} Sepolia ETH plus gas to make this deposit.`);
+        }
+        const weth = await getContract(ADDRESSES.tokenIn, WETH_ABI, wallet.signer);
+        setStatus(`Wrapping ${formatUnits(missingAmount, inputMetadata.decimals)} Sepolia ETH to WETH…`);
+        await (await weth.deposit({ value: missingAmount })).wait();
+      }
+
+      setStatus(`Approving ${formatUnits(amount, inputMetadata.decimals)} ${inputMetadata.symbol}…`);
       await (await inputToken.approve(ADDRESSES.shieldedTokenIn, amount)).wait();
       fundingApprovalGranted = true;
-      setStatus('Wrapping into your confidential balance…');
+      setStatus('Depositing privately…');
       await (await shieldedToken.wrap(wallet.address, amount)).wait();
       fundingCompleted = true;
-      setStatus('Confidential balance funded. Place a separate encrypted order when ready.');
+      setStatus('Deposited. Your WETH is ready to swap privately.');
       setFundAmount('');
     } catch (error) {
       setStatus(`Funding failed: ${readableError(error)}`);
     } finally {
-      if (inputToken && fundingApprovalGranted) {
+      if (inputToken && fundingApprovalGranted && !fundingCompleted) {
         try {
+          // A successful exact-amount transfer consumes the full WETH allowance.
+          // Reset only after a failed deposit, when an allowance may remain.
           await (await inputToken.approve(ADDRESSES.shieldedTokenIn, 0)).wait();
         } catch (error) {
           setStatus(
-            fundingCompleted
-              ? `Funding completed, but the ERC-20 approval reset failed. Reset the approval manually: ${readableError(error)}`
-              : `Funding failed and the ERC-20 approval may still be active. Reset it manually: ${readableError(error)}`,
+            `Deposit failed and the WETH approval may still be active. Reset it manually: ${readableError(error)}`,
           );
         }
       }
@@ -300,7 +316,7 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
         <summary>Deposit {inputMetadata.symbol}</summary>
         <div className="funding-content">
           <p className="helper-text">
-            Required before your first private swap. Deposit is public.
+            Required once. If you only have Sepolia ETH, we wrap the missing WETH automatically. Deposit is public.
           </p>
           <div className="field">
             <label htmlFor="fund-amount">Amount ({inputMetadata.symbol})</label>
