@@ -152,35 +152,86 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
   const metadataReady = inputMetadata.decimals !== null && outputMetadata.decimals !== null;
 
   return (
-    <div className="panel">
-      <p className="panel-title">1. Fund confidential balance</p>
-      <p className="helper-text">
-        Funding is public chain activity. Fund independently of a specific trade to avoid linking a deposit to an order.
-      </p>
-      <div className="field">
-        <label htmlFor="fund-amount">Public funding amount ({inputMetadata.symbol})</label>
-        <input id="fund-amount" inputMode="decimal" value={fundAmount} onChange={(event) => setFundAmount(event.target.value)} disabled={!metadataReady || busyAction !== null} />
+    <div className="swap-card panel">
+      <div className="swap-card-heading">
+        <div>
+          <p className="panel-title">Private swap</p>
+          <p className="route-title">{inputMetadata.symbol} <span>↓</span> {outputMetadata.symbol}</p>
+        </div>
+        <span className="privacy-chip">Trade size encrypted</span>
       </div>
-      <button className="secondary" onClick={handleFund} disabled={!metadataReady || busyAction !== null}>
-        {busyAction === 'fund' ? 'Funding…' : 'Fund confidential balance'}
-      </button>
 
-      <hr className="section-divider" />
-      <p className="panel-title">2. Submit encrypted order</p>
-      <p className="helper-text">
-        The sell amount is encrypted in this transaction. Set a conservative public minimum output; the contract rejects zero-slippage protection.
+      <div className="token-field">
+        <div className="token-field-label">
+          <label htmlFor="sell-amount">You swap</label>
+          <span>Encrypted when submitted</span>
+        </div>
+        <div className="token-control">
+          <input
+            id="sell-amount"
+            inputMode="decimal"
+            placeholder="0.0"
+            value={orderAmount}
+            onChange={(event) => setOrderAmount(event.target.value)}
+            disabled={!metadataReady || busyAction !== null}
+          />
+          <span className="token-chip token-in"><i aria-hidden="true">Ξ</i>{inputMetadata.symbol}</span>
+        </div>
+      </div>
+
+      <div className="swap-arrow" aria-hidden="true">↓</div>
+
+      <div className="token-field">
+        <div className="token-field-label">
+          <label htmlFor="min-out">Minimum you receive</label>
+          <span>Public slippage protection</span>
+        </div>
+        <div className="token-control">
+          <input
+            id="min-out"
+            inputMode="decimal"
+            placeholder="0.0"
+            value={minOut}
+            onChange={(event) => setMinOut(event.target.value)}
+            disabled={!metadataReady || busyAction !== null}
+          />
+          <span className="token-chip token-out"><i aria-hidden="true">$</i>{outputMetadata.symbol}</span>
+        </div>
+      </div>
+
+      <p className="min-out-note">
+        This beta does not show a quote. Enter the least {outputMetadata.symbol} you will accept; that limit is public and protects your order from excess slippage.
       </p>
-      <div className="field">
-        <label htmlFor="sell-amount">Encrypted sell amount ({inputMetadata.symbol})</label>
-        <input id="sell-amount" inputMode="decimal" value={orderAmount} onChange={(event) => setOrderAmount(event.target.value)} disabled={!metadataReady || busyAction !== null} />
-      </div>
-      <div className="field">
-        <label htmlFor="min-out">Minimum accepted batch allocation ({outputMetadata.symbol})</label>
-        <input id="min-out" inputMode="decimal" value={minOut} onChange={(event) => setMinOut(event.target.value)} disabled={!metadataReady || busyAction !== null} />
-      </div>
-      <button className="primary wide" onClick={handleSubmitOrder} disabled={!metadataReady || busyAction !== null}>
-        {busyAction === 'submit' ? 'Submitting…' : 'Submit encrypted order'}
+      <button className="primary swap-cta" onClick={handleSubmitOrder} disabled={!metadataReady || busyAction !== null}>
+        {busyAction === 'submit' ? 'Placing private swap…' : 'Place private swap'}
       </button>
+      <div className="swap-card-footer">
+        <span>Private relay settlement</span>
+        <span>Batch of 3+ addresses</span>
+      </div>
+
+      <details className="funding-details">
+        <summary>First swap? Add {inputMetadata.symbol} to your private balance</summary>
+        <div className="funding-content">
+          <p className="helper-text">
+            This one-time funding transaction is public. Funding separately from your order makes the relationship harder to infer.
+          </p>
+          <div className="field">
+            <label htmlFor="fund-amount">Public funding amount ({inputMetadata.symbol})</label>
+            <input
+              id="fund-amount"
+              inputMode="decimal"
+              placeholder="0.0"
+              value={fundAmount}
+              onChange={(event) => setFundAmount(event.target.value)}
+              disabled={!metadataReady || busyAction !== null}
+            />
+          </div>
+          <button className="secondary" onClick={handleFund} disabled={!metadataReady || busyAction !== null}>
+            {busyAction === 'fund' ? 'Adding funds…' : `Add private ${inputMetadata.symbol}`}
+          </button>
+        </div>
+      </details>
 
       {status && <p className="helper-text status-message" role="status">{status}</p>}
     </div>

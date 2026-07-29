@@ -3,7 +3,7 @@ import { formatUnits } from 'ethers';
 import { ADDRESSES, ERC20_ABI, ROUTER_ABI } from '../lib/contracts.js';
 import { getContract } from '../lib/nox.js';
 
-const STATUS_LABELS = ['unknown', 'validating', 'active', 'batched', 'settled', 'cancelled'];
+const STATUS_LABELS = ['Unknown', 'Verifying funds', 'Waiting for batch', 'Batching privately', 'Swapped privately', 'Cancelled'];
 const MAX_VISIBLE_ORDERS = 50;
 
 function readableError(error) {
@@ -81,36 +81,40 @@ export default function OrderList({ wallet, refreshKey }) {
     }
   }
 
-  return (
-    <div className="panel">
-      <p className="panel-title">Recent encrypted orders</p>
-      <p className="helper-text">The list refreshes every 20 seconds. Settlement is intentionally unavailable from the public UI.</p>
-      {orders.length === 0 && <p className="helper-text">No orders found on this router.</p>}
+  const ownOrders = orders.filter((order) => order.trader.toLowerCase() === wallet.address.toLowerCase());
 
-      {orders.map((order) => {
-        const isOwnOrder = order.trader.toLowerCase() === wallet.address.toLowerCase();
+  return (
+    <div className="panel activity-panel">
+      <div className="panel-heading-row">
+        <div>
+          <p className="panel-title">Your private swaps</p>
+          <p className="helper-text">Orders refresh every 20 seconds. Only this wallet’s activity is shown here.</p>
+        </div>
+        <span className="refresh-indicator"><i aria-hidden="true" /> Live</span>
+      </div>
+      {ownOrders.length === 0 && <p className="empty-state">No private swaps from this wallet yet.</p>}
+
+      {ownOrders.map((order) => {
         const isCancellable = order.status === 1 || order.status === 2;
         return (
           <div className="order-card" key={order.id}>
             <div>
-              <div className="order-meta">
-                #{order.id} · trader {order.trader.slice(0, 6)}…{order.trader.slice(-4)}
-              </div>
-              <div className="order-amount hidden-value">•••• encrypted input</div>
-              <div className="order-meta">public minimum output: {formatUnits(order.minOut, metadata.decimals)} {metadata.symbol}</div>
-              <div className="order-meta">deadline: {new Date(order.deadline * 1000).toLocaleTimeString()}</div>
+              <div className="order-meta">Private swap #{order.id}</div>
+              <div className="order-amount hidden-value">•••• encrypted trade amount</div>
+              <div className="order-meta">Minimum receive: {formatUnits(order.minOut, metadata.decimals)} {metadata.symbol}</div>
+              <div className="order-meta">Expires {new Date(order.deadline * 1000).toLocaleTimeString()}</div>
             </div>
 
             <div className="order-actions">
               <span className="badge shielded">
                 {STATUS_LABELS[order.status] ?? 'unknown'}
               </span>
-              {isOwnOrder && isCancellable && (
+              {isCancellable && (
                 <button className="secondary" disabled={cancellingId === order.id} onClick={() => handleCancel(order.id)}>
                   {cancellingId === order.id ? 'Cancelling…' : 'Cancel'}
                 </button>
               )}
-              {order.status >= 3 && <span className="order-meta">batch #{order.batchId}</span>}
+              {order.status >= 3 && <span className="order-meta">Batch #{order.batchId}</span>}
             </div>
           </div>
         );
