@@ -302,21 +302,21 @@ export default function OrderForm({ wallet, onOrderSubmitted }) {
         </label>
       </div>
       <p className="min-out-note">
-        Minimum is public. Quote is live; settlement is batched.
+        Live Uniswap quote · Three-wallet batch settlement
       </p>
       <button className="primary swap-cta" onClick={handleSubmitOrder} disabled={!metadataReady || !quote || busyAction !== null}>
         {busyAction === 'submit' ? 'Swapping privately…' : 'Swap privately'}
       </button>
       <div className="swap-card-footer">
         <span>Private relay</span>
-        <span>3-wallet batch</span>
+        <span>Batch execution</span>
       </div>
 
       <details className="funding-details">
         <summary>Deposit {inputMetadata.symbol}</summary>
         <div className="funding-content">
           <p className="helper-text">
-            Required once. If you only have Sepolia ETH, we wrap the missing WETH automatically. Deposit is public.
+            Add WETH once to trade privately. Missing WETH is wrapped from your Sepolia ETH automatically.
           </p>
           <div className="field">
             <label htmlFor="fund-amount">Amount ({inputMetadata.symbol})</label>

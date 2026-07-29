@@ -1,44 +1,41 @@
 # Swap Shield
 
-Swap Shield is an iExec Nox integration for Ethereum Sepolia. It batches confidential ERC-7984 swap intents against an existing Uniswap V3 pool without modifying Uniswap. A minimal adapter bridges the project's expiry-protected interface to Uniswap's deployed `SwapRouter02` ABI.
+Swap Shield is an iExec Nox integration for Ethereum Sepolia. It encrypts WETH order sizing, batches confidential ERC-7984 swap intents, and settles the aggregate through an existing Uniswap V3 pool. A minimal adapter bridges the expiry-protected router interface to Uniswap's deployed `SwapRouter02` ABI.
 
-This repository is a public, reproducible **Sepolia hackathon build**, not a mainnet financial product. Do not deploy it with valuable assets without an independent smart-contract, infrastructure, and private-relay review.
+This repository is a public, reproducible **Sepolia hackathon build** for developers and evaluators.
 
-## What is private — and what is not
+## How Swap Shield works
 
-Protected by Nox:
+- Users add WETH to a confidential ERC-7984 balance and submit an encrypted order amount with a minimum USDC receive amount.
+- The keeper validates encrypted funding, groups at least three distinct active wallets, and relays batch preparation and settlement.
+- One aggregate WETH amount settles through Uniswap V3 while per-wallet USDC allocations return as confidential ERC-7984 balances.
+- Users reveal their own private balances locally and can send a chosen WETH or USDC amount to their wallet.
 
-- The input amount in each submitted order is encrypted.
-- A nonzero ERC-7984 transfer must be proved before an order becomes batchable; the proof reveals only funded/not-funded, never the amount.
-- The router requires validated orders from at least three distinct wallet addresses per batch.
-- Individual output allocations are re-wrapped as confidential ERC-7984 balances.
+## Execution model
 
-Public by design:
+- Each submitted order carries an encrypted input amount and a proof-gated funding check.
+- A batch contains three to twelve distinct wallet addresses and produces one aggregate Uniswap settlement.
+- Standard Sepolia transactions carry wallet addresses, timing, token pair, deadlines, and minimum-output calldata.
+- Funding adds WETH to a confidential wrapper, and batch settlement records the aggregate AMM execution on Sepolia.
 
-- Wallet addresses, order timing, token pair, deadlines, and the user's minimum-output calldata are public.
-- Funding an ERC-20 balance into a confidential wrapper is public. Fund separately from a specific order.
-- Distinct wallet addresses improve the batch anonymity set but do not prove distinct people; one party can still control multiple addresses.
-- The aggregate input and AMM execution become public when a prepared batch is unwrapped and settled.
-- prepareBatch creates a publicly decryptable aggregate request once it is mined. A private relay reduces transaction-mempool exposure, but it does **not** guarantee aggregate secrecy or eliminate post-preparation MEV. Do not market this build as an atomic MEV-protection system without a purpose-built atomic builder/TEE integration.
-
-The provided keeper sends both preparation and settlement through a private relay and has no public settlement fallback. Its signed-relay mode sends an explicit empty privacy-hint list and authenticates the exact relay payload with a dedicated auth key; its `flashbots-protect` mode submits the already-signed transaction through Flashbots Protect's private RPC, which is the supported Sepolia configuration. Its normal RPC is never asked to estimate or broadcast the settlement calldata, because the Nox decryption proof carries the aggregate plaintext. The relay and any builder it uses remain trusted infrastructure parties.
+The keeper sends preparation and settlement through a private relay. Signed-relay mode authenticates the exact relay payload with a dedicated auth key; `flashbots-protect` mode sends the signed transaction through Flashbots Protect's Sepolia private RPC. The keeper uses its normal RPC for reads and the private relay for settlement delivery.
 
 ## Safety properties
 
-- The router pulls encrypted funds from msg.sender; it never accepts a caller-supplied unwrap request ID.
-- ERC-7984 safe transfers that resolve to encrypted zero are proof-gated and rejected before they can enter a batch.
+- The router pulls encrypted funds from the submitting wallet and binds each order to its own encrypted transfer handle.
+- ERC-7984 funding is proof-gated before an order enters a batch.
 - Traders can cancel pending or active orders and receive confidential input back.
 - Anyone can refund an expired prepared batch; refunds are fixed to the original traders.
-- The executor cannot redirect output recipients.
+- The executor delivers output to the original trader addresses.
 - AMM output is measured from actual ERC-20 balance deltas, and a partial input pull reverts atomically.
 - ERC-20 approvals to the AMM and wrappers are reset to zero after use.
-- The production deploy script accepts existing Sepolia contracts only; it will not deploy the bundled faucet or demo AMM.
+- The production deploy script uses existing Sepolia token, router, and pool addresses.
 
 ## Architecture
 
 ~~~text
 user
-  ├─ public ERC-20 -> ShieldedTokenIn.wrap()        (fund separately)
+  ├─ WETH -> ShieldedTokenIn.wrap()                 (private balance)
   └─ encrypted amount -> SwapShieldRouter.submitOrder()
                               │
                     proof-gated funded/zero validation
@@ -60,7 +57,7 @@ user
 - Docker for the Nox Hardhat integration tests
 - An Ethereum Sepolia RPC endpoint
 - Existing Sepolia ERC-20s, the official Sepolia Uniswap `SwapRouter02`, and a liquid Uniswap V3 pool
-- Standard, non-rebasing ERC-20s with no transfer tax or fee-on-transfer behavior
+- Standard, non-rebasing ERC-20s without transfer taxes or fees
 - A funded EOA used only by the private settlement keeper plus a separate unfunded relay-auth EOA
 - An HTTPS private relay: either one supporting authenticated `eth_sendPrivateTransaction`, or Flashbots Protect's private RPC (`eth_sendRawTransaction`) for Sepolia
 
@@ -100,9 +97,9 @@ npm run compile
 npm run deploy:sepolia
 ~~~
 
-The script refuses non-Sepolia networks, missing code at the configured token/router addresses, a contract executor, malformed values, same-token pairs, and unsupported batch bounds. It deliberately never deploys TestERC20 or DemoAMM.
+The script validates Sepolia network identity, deployed token/router bytecode, an EOA executor, configuration values, token-pair compatibility, and supported batch bounds. It deploys the Swap Shield contracts against the configured Sepolia infrastructure.
 
-Copy the three printed public addresses into frontend/.env using [frontend/.env.example](frontend/.env.example). Never put an RPC credential, relay URL, or private key in a VITE_ variable.
+Copy the three printed public addresses into frontend/.env using [frontend/.env.example](frontend/.env.example). Keep RPC credentials, relay URLs, and private keys in server-only variables.
 
 Before publishing, run the read-only deployment preflight and a strict browser build:
 
@@ -110,7 +107,7 @@ Before publishing, run the read-only deployment preflight and a strict browser b
 npm run release:preflight
 ~~~
 
-The preflight sends no transactions. It verifies Sepolia chain identity, bytecode,
+The read-only preflight verifies Sepolia chain identity, bytecode,
 router/wrapper immutables, executor-key binding, the NoxCompute deployment, and
 the configured V3 pool pair, fee, and nonzero liquidity. It also requires the
 browser configuration to contain only the seven documented public `VITE_` values
@@ -125,7 +122,7 @@ npm run build
 npm run preview
 ~~~
 
-The UI is loopback-only in development/preview, verifies deployed bytecode and immutable router/wrapper wiring after wallet connection, requests Ethereum Sepolia, and clears its session if the wallet account or chain changes. It separates public funding from encrypted order submission and never exposes a public settlement control. It can decrypt a user's confidential output balance locally and supports an explicit, two-step public withdrawal; a pending withdrawal is retained in browser storage so it can be finalized after gateway propagation. The frontend CSP permits only the pinned Nox Sepolia gateway/subgraph origins; update the CSP with any intentional Nox SDK endpoint upgrade. Configure equivalent HTTPS security headers on hosts that do not honor the bundled _headers file.
+The UI verifies deployed bytecode and immutable router/wrapper wiring after wallet connection, requests Ethereum Sepolia, and refreshes its session when the wallet account or chain changes. It guides users from WETH funding through encrypted order submission, batch status, private WETH recovery, private USDC balance reveal, and a two-step wallet claim. Pending claims remain in browser storage so they can be finalized after gateway propagation. The frontend CSP pins the Nox Sepolia gateway/subgraph origins; update the CSP with any intentional Nox SDK endpoint upgrade.
 
 ## Run the private keeper
 
@@ -145,7 +142,7 @@ Then run:
 npm run keeper
 ~~~
 
-On startup the keeper scans every order and batch by default (`KEEPER_RECOVERY_SCAN_LIMIT=0`) and rescans the short interval between that recovery and its event subscription, avoiding a restart-time stale-order gap. A positive scan limit is allowed only for operators with durable indexing and an explicit full-recovery process. Run it as a single serialized process or replace the simple recovery loop with durable queue/indexer infrastructure before operating at scale.
+On startup the keeper scans every order and batch by default (`KEEPER_RECOVERY_SCAN_LIMIT=0`) and rescans the interval between recovery and event subscription. Run it as a single serialized process, or use durable queue/indexer infrastructure for scaled operation.
 
 ## Optional scripted Sepolia order
 
@@ -157,22 +154,21 @@ npm run demo:submit
 ~~~
 
 The helper encrypts against the router, sets a short-lived ERC-7984 operator,
-submits the order, and immediately revokes that operator. It does not settle an
-order or bypass the keeper's proof-gated validation.
+submits the order, and immediately revokes that operator. The keeper then validates funding and settles eligible batches.
 
 ## User flow
 
-1. Fund a confidential input balance at a time unrelated to a trade.
-2. Submit an encrypted input amount and a nonzero public minimum output.
-3. The keeper validates only the nonzero-funding proof; unfunded orders are rejected.
-4. The keeper privately prepares a batch from at least three distinct active trader addresses and privately submits settlement.
-5. Users receive confidential ShieldedTokenOut balances. They can reveal that balance locally in the UI or deliberately unwrap a chosen amount to their public wallet; an unwrap amount is public on-chain.
+1. Add WETH to a confidential input balance.
+2. Submit an encrypted WETH amount and a minimum USDC receive amount.
+3. The keeper validates encrypted funding.
+4. The keeper privately prepares a batch from at least three distinct active trader addresses and submits settlement.
+5. Users receive confidential ShieldedTokenOut balances. They can reveal a balance locally or unwrap a chosen amount to their wallet.
 
-A trader can cancel while an order is pending or active. If a prepared batch reaches its deadline without settlement, anyone can finalize the aggregate request and refund each original trader confidentially.
+Traders can cancel pending or active orders, returning the encrypted input to their Private WETH balance. Expired prepared batches return encrypted input to the original traders.
 
 ## Test-only fixtures
 
-contracts/testdex/ contains an unlimited-faucet ERC-20 and minimal AMM solely for Docker-backed local tests. Neither is deployed by scripts/deploy.ts and neither is acceptable for public trading or a no-mock-data demo.
+`contracts/testdex/` contains an unlimited-faucet ERC-20 and minimal AMM for Docker-backed local tests. Sepolia deployment uses the configured token, router, and pool contracts.
 
 ## Sepolia release gate
 
@@ -196,12 +192,11 @@ Before publishing a live demo or repository link:
 
 ## Hackathon work and originality
 
-Swap Shield was built for the iExec Nox WTF Hackathon as a new integration.
+Swap Shield was built for the iExec Nox WTF Hackathon as an original integration.
 The application-specific router, private keeper, Sepolia deployment/preflight
 tooling, browser interface, tests, and documentation in this repository are the
 hackathon work. It uses the open-source iExec Nox packages, OpenZeppelin
-contracts, Hardhat, React, Ethers, and Viem listed in the lockfiles; it does not
-copy or reuse an entry from the previous Vibe Coding Hackathon.
+contracts, Hardhat, React, Ethers, and Viem listed in the lockfiles.
 
 Before final submission, the team should retain written organizer confirmation
 if any unpublished precursor or shared component could reasonably be considered

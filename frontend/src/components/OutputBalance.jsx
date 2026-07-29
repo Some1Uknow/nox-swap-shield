@@ -125,13 +125,13 @@ export default function OutputBalance({
       } catch {
         setBalance(null);
       }
-      setStatus('This public claim was already finalized on-chain.');
+      setStatus('This claim is already finalized on-chain.');
       return;
     }
     if (recipient.toLowerCase() !== wallet.address.toLowerCase()) {
       throw new Error('This pending claim belongs to a different wallet.');
     }
-    setStatus(`Preparing your public ${assetName} claim…`);
+    setStatus(`Preparing your ${assetName} claim…`);
     const { decryptionProof } = await wallet.handleClient.publicDecrypt(requestId);
     setStatus(`Sending ${assetName} to your wallet…`);
     await (await shieldedToken.finalizeUnwrap(requestId, decryptionProof)).wait();
@@ -145,7 +145,7 @@ export default function OutputBalance({
       // again once the gateway catches up.
       setBalance(null);
     }
-    setStatus(`${assetName} claimed to your wallet. This claim amount is public on-chain.`);
+    setStatus(`${assetName} claimed to your wallet.`);
   }
 
   async function handleRevealBalance() {
