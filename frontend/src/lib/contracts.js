@@ -20,6 +20,10 @@ export const ERC20_ABI = [
   'function symbol() view returns (string)',
 ];
 
+export const WETH_ABI = [
+  'function deposit() payable',
+];
+
 export const SHIELDED_TOKEN_ABI = [
   'function underlying() view returns (address)',
   'function wrap(address to, uint256 amount) returns (bytes32)',
