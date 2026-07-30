@@ -20,11 +20,6 @@ function ProductNarrative() {
           alt="iExec"
         />
       </a>
-      <dl className="protocol-facts">
-        <div><dt>Order size</dt><dd>Encrypted locally</dd></div>
-        <div><dt>Settlement</dt><dd>Shared AMM batch</dd></div>
-        <div><dt>Network</dt><dd>Ethereum Sepolia</dd></div>
-      </dl>
     </section>
   );
 }
