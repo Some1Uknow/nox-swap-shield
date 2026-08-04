@@ -23,7 +23,7 @@
     "demo:submit": "tsx scripts/demo-submit-order.ts"
   },
   "devDependencies": {
-    "@iexec-nox/nox-hardhat-plugin": "0.1.0",
+    "@iexec-nox/nox-hardhat-plugin": "0.2.0",
     "@nomicfoundation/hardhat-node-test-runner": "3.0.17",
     "@nomicfoundation/hardhat-viem": "3.0.9",
     "hardhat": "3.11.1",
